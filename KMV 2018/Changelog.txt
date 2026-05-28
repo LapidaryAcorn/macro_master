@@ -1,0 +1,11 @@
+- Initial version (v0)
+   Posted on 2018-02-28 10:05:32
+   Posted at https://www.aeaweb.org/content/file?id=6538
+   Original list of files, see Manifest-v0.txt
+- This version (v1)
+   Added License.txt
+   File modifications were made to the deposit as follows:
+   Removed any '__MACOSX' and '.DS_Store' files.
+   /20160042_data/TestReplicationAER/IRF_Monetary/ ->
+   /20160042_data/TestReplicationAER/IRF_Monetary.zip
+   Modified file list, see Manifest-v1.txt

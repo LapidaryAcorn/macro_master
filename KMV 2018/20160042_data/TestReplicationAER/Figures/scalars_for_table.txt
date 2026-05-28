@@ -1,0 +1,20 @@
+ 
+Mean Iliquid Wealth  = 2.92
+Mean Liquid Wealth   = 0.23271
+Frac $b=0$ and $a=0$ = 0.10273
+Frac $b=0$ and $a>0$ = 0.18641
+Frac $b<0$           = 0.14608
+ 
+Liquid Wealth: top 10% share  = 0.7496
+Liquid Wealth: top 1% share   = 0.18162
+Liquid Wealth: top 0.1% share = 0.023507
+Liquid Wealth: bot 50% share  = -0.032221
+Liquid Wealth: bot 25% share  = -0.032267
+Liquid Wealth: gini           = 0.86222
+ 
+Iliquid Wealth: top 10% share  = 0.87736
+Iliquid Wealth: top 1% share   = 0.40869
+Iliquid Wealth: top 0.1% share = 0.070946
+Iliquid Wealth: bot 50% share  = 0.00098714
+Iliquid Wealth: bot 25% share  = 2.6919e-05
+Iliquid Wealth: gini           = 0.81993
