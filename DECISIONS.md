@@ -776,12 +776,15 @@ stronger than leaving them to be discovered.
 > Step 2 has its own running log: **`../hank_step2/STEP2_LOG.md`**. So far:
 > S1 baseline reproduced & verified; S2 frequency = quarterly (six ways); S3
 > one-asset reproduces KMV's 20/80 split (composition differs — see below);
-> **S4 the raw exported chains do NOT drop into the infinite-horizon model** —
-> their ergodic var(log e) is 1.0–1.8 vs ARS's 0.85, precautionary saving
-> collapses the MPC, and the USA/FRA calibration degenerates. Fix is in the
-> export (target ergodic var, drop `match_var_log`), not the model — see
-> STEP2_LOG §S4. The notes below are the pre-step-2 reading of the code and
-> still stand.
+> **S4 the raw exported chains do not calibrate in the one-asset model** for
+> USA and FRA (`dβ → 0`, MPC ≈ 0.03 vs target 0.20); GER works. **S5** tested
+> the KMV stochastic-death fix — it does *not* work in a one-asset model (death
+> generates MPC only via KMV's two-asset structure), and KMV's own ergodic
+> variance is 1.07 not 0.85, so FRA/GER (1.04) already match KMV and only USA
+> (1.79) is a scale outlier — a `β₂`×`σ₂` issue, not a general rescale. Current
+> state: USA needs a `β₂` re-estimation; FRA is under test; if neither
+> calibrates in one-asset, revisit two-asset. The notes below are the
+> pre-step-2 reading of the code and still stand.
 
 Recorded 2026-08-30 from `household.py` in `shade-econ/annual-review`, so step 2
 starts from facts rather than assumptions. The relevant block is:
@@ -854,16 +857,25 @@ starts from facts rather than assumptions. The relevant block is:
   dispersion rather than KMV's US value; (iii) whether to add a ninth identifying
   moment (longer-horizon autocovariance) as a robustness check. Both for the
   supervisor.
-- **USA `β₂` is on the high side too — now confirmed a problem (STEP2_LOG §S4).**
-  The unrestricted USA estimate implies ergodic sd of the persistent component
-  ≈ 1.22 (vs KMV's 0.95) and ergodic var(log e) ≈ 1.8 (vs ARS's 0.85). In the
-  infinite-horizon step-2 model this breaks the calibration (MPC collapses to
-  0.024 vs the 0.20 target). Two levers: (a) the general fix — target the
-  chain's *ergodic* var(log e) in the export instead of `match_var_log`
-  (§8c) which targets the panel var; (b) pin USA's `β₂` to the KMV ergodic
-  anchor as for GER (§8b) — helps USA (1.8 → ~1.2) but is a partial fix and does
-  not help FRA (whose free `β₂` is already more mean-reverting than the anchor).
-  Lever (a) is the one to pull. Supervisor question.
+- **USA `β₂` — confirmed a step-2 problem (STEP2_LOG §S4–S5).** USA's
+  unrestricted estimate implies ergodic `var(log e) ≈ 1.79`, against **KMV's own
+  1.07** (`λσ²/2β` at KMV Table 4; *not* the ARS 33-state process's 0.85 — that
+  distinction was got wrong in §S4 and corrected in §S5). FRA and GER (both
+  1.04) already match KMV; only USA is an outlier, driven by `β₂ = 0.0066` ×
+  `σ₂ = 1.32`. In the one-asset model USA's calibration degenerates (MPC 0.024).
+  Fix: pin the ergodic variance of USA's persistent component to KMV's via the
+  §8b `ErgodicVarConstraint` → `β₂ ≈ 0.0105`, ergodic var → ~1.2. Re-estimate
+  USA (~50 min). *Not* a general rescale — FRA/GER need nothing on this axis.
+  The alternative — adding KMV's stochastic death instead of touching `β₂` —
+  **was tested (§S5) and does not work in a one-asset model.** Supervisor
+  question.
+- **The §8b ergodic-plausibility argument needs a light revisit** given §S5:
+  it is still right that a stationary HANC confronts households with the ergodic
+  distribution, but the reference point is KMV's 1.07, not "implausible for any
+  labour market". GER's pinned ergodic sd 0.95 (var 0.91 for the persistent
+  component) is right at KMV's; the argument is "match KMV's ergodic dispersion
+  because the German panel can't identify `β₂`", which is cleaner than the
+  original "avoid implausible values" framing. Reword when convenient.
 - **Restoring a genuine second optimiser (§9) — optional, not blocking.** The
   line scan + DE cross-run stability already carry the identification argument,
   so the estimates are settled. But if a stronger form of the evidence is wanted,
