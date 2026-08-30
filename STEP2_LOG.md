@@ -297,21 +297,32 @@ ineffective mechanism, not a fix.
    persistent component to KMV's (DECISIONS §8b `ErgodicVarConstraint`) → `β₂ ≈
    0.0105`, ergodic var → ~1.2. Re-estimate USA (~50 min). FRA and GER need
    nothing on this axis (already ≈ KMV's 1.07).
-2. **FRA** — its ergodic variance is fine (1.04 ≈ KMV's 1.07); the S4 failure
-   is process *shape* (lower `λ₂ = 0.007` vs GER's 0.010 → persistent shocks
-   rarer → fewer households recently hit by a large drop → fewer near the
-   constraint). Probing wider `β`-heterogeneity (`_fra_betahet.py`,
-   `results/fra_betahet.json`): as `β_lo` falls, MPC rises to 0.4–0.6 **but `A`
-   collapses to 3–12 (never 20) and the SCF Lorenz goes badly off** (err −2 to
-   −4.5, frac-at-zero 0.4–0.6). So (`A = 20`, MPC = 0.20, SCF Lorenz) look
-   **jointly infeasible** for FRA in the one-asset `β`-het family — you can hit
-   `A = 20` (near-homogeneous patient `β`, MPC ≈ 0.03) *or* high MPC (impatient
-   types, `A ≈ 5`), not both. One more targeted calibration seeded from GER's
-   working solution is running (`_fra_final.py`) to confirm no `β_lo ≈ 0.92`
-   sweet spot exists (GER's does).
-3. If neither USA nor FRA can be made to work in one-asset, that is the
-   argument for the **two-asset** model after all (contra §S3, which only
-   checked the *decomposition* reproduces — not whether *our chains* calibrate).
+2. **FRA — confirmed cannot calibrate in one-asset** (`_fra_final.py`,
+   `results/fra_final.json`: 3 seeds incl. GER's working solution, all collapse
+   to `dβ ≈ 0.005`, MPC 0.03). FRA's ergodic variance is fine (1.04 ≈ KMV's
+   1.07); the failure is process *shape* — lower `λ₂ = 0.007` (vs GER 0.010) →
+   persistent shocks rarer → households can self-insure them → few near the
+   constraint. Probing wider `β`-heterogeneity: as `β_lo` falls, MPC rises to
+   0.4–0.6 **but `A` collapses to 3–12 (never 20) and the SCF Lorenz goes badly
+   off**. So (`A = 20`, MPC = 0.20, SCF Lorenz) are **jointly infeasible** for
+   the FRA chain in the one-asset `β`-het family. GER has a `β_lo ≈ 0.92` sweet
+   spot; FRA does not.
+
+**Where this leaves step 2.** One-asset validates *as a mechanism*
+(reproduces KMV's 20/80 decomposition, §S3) and works for GER. But:
+  - **USA** needs a `β₂` re-estimation (pin ergodic var of the persistent
+    component to KMV's 1.07 → `β₂ ≈ 0.0105`) — then it should calibrate.
+  - **FRA** cannot be made to calibrate in one-asset by any lever short of
+    changing the targets. The honest options: (a) report FRA with its
+    model-implied MPC (~0.03–0.05) and weaker transmission, caveated; (b) use a
+    French wealth distribution / MPC target instead of the US SCF ones; (c) go
+    **two-asset**, where the liquid/illiquid transaction cost generates
+    wealthy-hand-to-mouth regardless of the earnings-process shape.
+  - **Relevance to Poland (the actual thesis target):** if the Polish earnings
+    process turns out shaped like France's (low `λ₂`, rare persistent shocks),
+    the one-asset model won't calibrate for Poland either. That is a genuine
+    argument for building two-asset now rather than discovering the problem at
+    the Polish stage. Supervisor decision.
 
 **Files:** `death.py`, `_death_homog.py` / `results/death_homog.json`,
 `_calib_death.py` / `results/calib_death.json` (ζ=1/180 no-annuity multistart,
@@ -321,11 +332,14 @@ also degenerate).
 
 ## Open (step 2)
 
-- **The one-asset calibration with our chains (§S4–S5).** GER works. USA needs
-  a `β₂` re-estimation (pin ergodic var of the persistent component to KMV's).
-  FRA is under test (`β`-het width). If USA/FRA can't be made to calibrate in
-  one-asset, revisit two-asset. **Blocks everything downstream.** Supervisor
-  question — the KMV-death hypothesis was tested and does not fix one-asset.
+- **The one-asset calibration with our chains (§S4–S5) — the fork.** GER works.
+  USA needs a `β₂` re-estimation. **FRA cannot calibrate in one-asset at all**
+  (confirmed). Decision: (a) one-asset, USA re-estimated, FRA reported caveated
+  with a low MPC; (b) one-asset with country-specific wealth/MPC targets for
+  FRA; or (c) build the **two-asset** model — which also de-risks Poland if the
+  Polish process is France-shaped. **Blocks everything downstream.** Supervisor
+  question. The KMV stochastic-death hypothesis was tested (§S5) and does not
+  fix one-asset.
 - ~~Chain export scale (rescale to 0.85)~~ — **withdrawn** (§S5 correction):
   0.85 is the ARS process, not KMV's target (1.07); FRA/GER already match, only
   USA is high and that is a `β₂` issue, not a rescale issue.
