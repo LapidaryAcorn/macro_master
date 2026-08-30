@@ -54,15 +54,22 @@ class DeathLottery1D(PolicyLottery1D):
             self.i.reshape(self.shape), self.pi.reshape(self.shape), self.grid, Dss, self.zeta)
 
 
-class ForwardShockableDeathLottery1D(ForwardShockablePolicyLottery1D):
+class ForwardShockableDeathLottery1D(DeathLottery1D, ForwardShockablePolicyLottery1D):
+    """het_block builds `law_of_motion` from the *shockable* transitions and then
+    calls `.expectation()` and `.forward()` on it to propagate the fake-news
+    curlyE / curlyD vectors -- so the shockable class must carry the SAME
+    death-modified `forward` and `expectation` as DeathLottery1D (inherited here
+    via MRO), not only `forward_shock`. Without that, every Jacobian row at
+    horizon >= 1 is wrong while the impact row stays right."""
+
     def __init__(self, i, pi, grid, Dss, zeta):
-        super().__init__(i, pi, grid, Dss)
+        ForwardShockablePolicyLottery1D.__init__(self, i, pi, grid, Dss)
         self.zeta = float(zeta)
 
     def forward_shock(self, da):
         # newborn mass zeta * (row total) does not depend on the policy shock da,
         # so d(forward)/d(policy) is just (1 - zeta) times the normal response
-        return (1.0 - self.zeta) * super().forward_shock(da)
+        return (1.0 - self.zeta) * ForwardShockablePolicyLottery1D.forward_shock(self, da)
 
 
 # ---- HetBlock that uses it ----------------------------------------------
