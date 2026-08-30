@@ -127,12 +127,18 @@ def theoretical_stationary_var(lam: float, beta: float, sigma: float) -> float:
 
 def _combine(out: dict) -> dict:
     g1, g2 = out["1"]["grid"], out["2"]["grid"]
+    n1, n2 = len(g1), len(g2)
     zgrid = (g1[:, None] + g2[None, :]).ravel()
     P = np.kron(out["1"]["P"], out["2"]["P"])
     pi = np.kron(out["1"]["pi"], out["2"]["pi"])
+    # combined quarterly generator: Kronecker SUM of the component generators, so
+    # expm(Q) == kron(expm(Q1), expm(Q2)) == P exactly. Downstream models (e.g.
+    # Auclert et al.) that load a generator and exponentiate internally want this,
+    # NOT P (feeding them P silently computes expm(P)).
+    Q = (np.kron(out["1"]["Q"], np.eye(n2)) + np.kron(np.eye(n1), out["2"]["Q"]))
     e = np.exp(zgrid)
     e = e / (pi @ e)                          # normalise mean earnings to 1
-    out["combined"] = {"zgrid": zgrid, "egrid": e, "P": P, "pi": pi}
+    out["combined"] = {"zgrid": zgrid, "egrid": e, "P": P, "Q": Q, "pi": pi}
     return out
 
 
@@ -164,10 +170,10 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
         Q = component_generator(grid, edges, lam, beta, sig)
         P = expm(Q)                           # quarterly transition matrix
         pi = stationary_dist(P)
-        if rescale_variance:
+        if rescale_variance and beta > 0:
             v_chain = float(pi @ (grid - pi @ grid) ** 2)
             v_theory = theoretical_stationary_var(lam, beta, sig)
-            if v_chain > 0:
+            if v_chain > 0 and np.isfinite(v_theory):
                 grid = grid * np.sqrt(v_theory / v_chain)
         out[name] = {"grid": grid, "edges": edges, "Q": Q, "P": P, "pi": pi}
 
@@ -248,11 +254,20 @@ def export_chain(disc: dict, outdir: str, prefix: str = "income_process") -> Non
     """
     Write the combined chain for step 2:
       *_grid.txt (earnings levels, mean 1), *_zgrid.txt (log grid),
-      *_P.txt (quarterly transition matrix), *_pi.txt (stationary distribution).
+      *_P.txt (quarterly transition matrix, rows sum to 1),
+      *_Q.txt (quarterly generator; expm(Q) == P -- for loaders that
+               exponentiate internally, e.g. Auclert et al.),
+      *_pi.txt (stationary distribution).
     """
     import os
     c = disc["combined"]
+    # sanity: the two matrices are consistent and well-formed
+    assert np.allclose(c["P"].sum(1), 1) and (c["P"] >= -1e-12).all(), "P not stochastic"
+    assert np.allclose(c["Q"].sum(1), 0, atol=1e-8), "Q rows do not sum to 0"
+    assert np.allclose(expm(c["Q"]), c["P"], atol=1e-8), "expm(Q) != P"
+    assert abs(c["pi"] @ c["egrid"] - 1.0) < 1e-8, "mean earnings != 1"
     np.savetxt(os.path.join(outdir, f"{prefix}_grid.txt"), c["egrid"])
     np.savetxt(os.path.join(outdir, f"{prefix}_zgrid.txt"), c["zgrid"])
     np.savetxt(os.path.join(outdir, f"{prefix}_P.txt"), c["P"])
+    np.savetxt(os.path.join(outdir, f"{prefix}_Q.txt"), c["Q"])
     np.savetxt(os.path.join(outdir, f"{prefix}_pi.txt"), c["pi"])

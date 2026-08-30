@@ -1,9 +1,0 @@
-Moment,Data,Model Estimated,Model Discretized
-Variance: annual log earns,0.48843184098283204,0.458,0.429
-Variance: 1yr change,0.2064458676991827,0.136,0.114
-Variance: 5yr change,0.3356385170841739,0.245,0.219
-Kurtosis: 1yr change,15.863568800000001,18.6,10.593
-Kurtosis: 5yr change,11.682470952380951,13.037,10.111
-Frac 1yr change < 10%,0.5283736937106829,0.592,0.78
-Frac 1yr change < 20%,0.7250764933089773,0.759,0.789
-Frac 1yr change < 50%,0.8640383869848881,0.897,0.885

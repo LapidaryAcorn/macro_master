@@ -29,9 +29,10 @@ from .discretize import discretize_process, discretized_moments, export_chain
 from .grid_loader import load_targets, save_targets
 
 
-def build_table(targets: dict, params: dict, sim_kwargs: dict) -> pd.DataFrame:
+def build_table(targets: dict, params: dict, sim_kwargs: dict,
+                disc_kwargs: dict | None = None) -> pd.DataFrame:
     m_est = model_moments(params, **sim_kwargs)
-    disc = discretize_process(params)
+    disc = discretize_process(params, **(disc_kwargs or {}))
     disc_keys = {"n_workers", "n_years_keep", "lifecycle"}
     m_disc = discretized_moments(params, disc=disc,
                                  **{k: v for k, v in sim_kwargs.items() if k in disc_keys})
