@@ -309,11 +309,55 @@ overshoots (that solve hit the `dβ` bound and is not a clean calibration — a
 lower `dβ` should work; the multistart bounds were too wide).
 
 **Revised reading:** death is *not* inert. The right one-asset structure is
-**ARS's `β`-heterogeneity plus KMV's stochastic death** — which is what KMV
-actually have (death) merged with what ARS actually have (`β`-het). With both,
-FRA calibrates. This needs the full swap re-run (steady state, wealth/MPC
-distributions, IRFs, decomposition) for USA (β₂-pinned) / FRA / GER before the
-fork is settled — the death mechanism may make (c) two-asset unnecessary.
+**ARS's `β`-heterogeneity plus KMV's stochastic death** — what KMV actually have
+merged with what ARS actually have. Full swap re-run (`swap_death.py`,
+`results/swap_death_*.json`; death block + joint `(β_hi, dβ, ω)` calibration,
+then steady state / wealth / MPC / IRFs / decomposition vs the infinitely-lived
+baseline):
+
+| with death + β-het | calibrates? | β_ave | frac HtM | MPC | mon. dY impact | decomp yr1 (direct/indirect) |
+|---|---|---|---|---|---|---|
+| baseline (their KMV chain) | 20 / 80 | 0.954 | 0.279 | 0.20 | 2.41 | 20 / 80 |
+| **FRA** | **yes** | 0.970 (+2%) | 0.225 | 0.200 | 2.24 (−7%) | 28 / 78 |
+| **GER** | **yes** | 0.976 (+2%) | 0.250 | 0.200 | 2.26 (−6%) | 26 / 80 |
+| **USA** (β₂-pinned re-estimate) | **no** | 0.990 | 0.011 | 0.029 | 1.81 | (degenerate) |
+
+**FRA and GER now work in one-asset** — clean calibration, MPC 0.20, monetary
+IRF within 7% of baseline, "indirect dominates" reproduced (≈27/78, vs KMV's
+19/80). β moves only +2%. This likely **makes fork (c) two-asset unnecessary
+for FRA/GER**.
+
+**USA still does not calibrate, even with β₂ pinned *and* death.** The
+β₂-pin re-estimate (DECISIONS §8b, now applied to USA — `β₂ = 0.0136`, ergodic
+sd of the persistent component = KMV's 0.954) brings the *analytic* ergodic var
+to ~1.05, but the exported chain lands at 1.19 (the `match_var_log` rescale
+re-inflates it), and rescaling it down to 1.04 (= FRA/GER) or 1.07 (= KMV) still
+does not fix it — `dβ → 0`, MPC 0.03. **The block is process *shape*, not
+variance:** USA's GRID chain has `kurt Δ1y = 12.8` against KMV's 17.8 (GRID-USA
+is a more volatile *and less leptokurtic* sample, DECISIONS §12). Without the
+leptokurtic tail — the rare large shocks — too few households ever reach the
+constraint, whatever the discount factor.
+
+**Where this leaves the fork (much narrower now):**
+- **FRA, GER:** one-asset + death. Done, works. No two-asset needed.
+- **USA:** the clean answer is that **the S1 baseline (KMV's own chain) *is* the
+  US validation** — it reproduces KMV's 20/80 decomposition (§S3). Our
+  GRID-USA chain is then a *sensitivity* ("what if US earnings were as GRID
+  measures them, less leptokurtic and more volatile"), and its answer — the MPC
+  and transmission collapse — is itself a result about how much the tail of the
+  earnings process matters. It does not need to "calibrate".
+- **Poland:** still the open risk. If the Polish process is USA-shaped (thin
+  tails), one-asset + death won't calibrate for Poland either. If it is
+  FRA/GER-shaped, it will. Two-asset remains the hedge — see §S6 cost (~2 wk).
+
+**Caveat on the decomposition split:** with the death block, the channel
+decomposition identity (`dC_r + dC_labor + dC_tax + dC_capgains = dY`) has a
+**~10% residual** (vs 0.2% without death) — a consistent, systematic gap, so a
+bug in the death block's Jacobian (`expectation` / `forward_shock` override) or
+a missing channel, not noise. The *total* IRF, the steady state, the MPC and
+the direct/indirect *direction* are unaffected; the exact channel percentages
+are ±3pp until this is chased. `TODO` before the decomposition goes in the
+thesis.
 
 **Consequence for the diagnosis (pre-`_death_betahet` — superseded above for
 FRA).** The USA/FRA calibration failure (§S4) is *not* solved by death *alone*.
@@ -424,14 +468,18 @@ discretization (§8d) proves to be a first-order problem.
 
 ## Open (step 2)
 
-- **The one-asset calibration with our chains (§S4–S5) — the fork.** GER works.
-  USA needs a `β₂` re-estimation. **FRA cannot calibrate in one-asset at all**
-  (confirmed). Decision: (a) one-asset, USA re-estimated, FRA reported caveated
-  with a low MPC; (b) one-asset with country-specific wealth/MPC targets for
-  FRA; or (c) build the **two-asset** model — which also de-risks Poland if the
-  Polish process is France-shaped. **Blocks everything downstream.** Supervisor
-  question. The KMV stochastic-death hypothesis was tested (§S5) and does not
-  fix one-asset.
+- **The one-asset calibration with our chains (§S4–S5, resolved for FRA/GER).**
+  Adding KMV stochastic death to ARS's β-heterogeneity **makes FRA and GER
+  calibrate** in one-asset (clean, MPC 0.20, IRF within 7% of baseline, KMV
+  decomposition reproduced). **USA does not** even with β₂ pinned + death — its
+  GRID chain lacks KMV's leptokurtic tail (`kurt Δ1y` 12.8 vs 17.8). Proposed
+  resolution: FRA/GER on one-asset + death; USA validated by the S1 baseline
+  (KMV's own chain), with the GRID-USA chain reported as a sensitivity. Poland
+  is the residual risk (needs two-asset only if the Polish process is
+  USA-shaped). Supervisor question, but the scope is now small.
+- **Decomposition identity has a ~10% residual with the death block** (§S5
+  caveat) — chase before the channel decomposition goes in the thesis. Does not
+  affect the steady state, total IRF, MPC, or direct/indirect direction.
 - ~~Chain export scale (rescale to 0.85)~~ — **withdrawn** (§S5 correction):
   0.85 is the ARS process, not KMV's target (1.07); FRA/GER already match, only
   USA is high and that is a `β₂` issue, not a rescale issue.
