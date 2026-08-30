@@ -347,13 +347,26 @@ This **makes fork (c) two-asset unnecessary for FRA/GER**.
 **USA still does not calibrate, even with β₂ pinned *and* death.** The
 β₂-pin re-estimate (DECISIONS §8b, now applied to USA — `β₂ = 0.0136`, ergodic
 sd of the persistent component = KMV's 0.954) brings the *analytic* ergodic var
-to ~1.05, but the exported chain lands at 1.19 (the `match_var_log` rescale
-re-inflates it), and rescaling it down to 1.04 (= FRA/GER) or 1.07 (= KMV) still
-does not fix it — `dβ → 0`, MPC 0.03. **The block is process *shape*, not
-variance:** USA's GRID chain has `kurt Δ1y = 12.8` against KMV's 17.8 (GRID-USA
-is a more volatile *and less leptokurtic* sample, DECISIONS §12). Without the
-leptokurtic tail — the rare large shocks — too few households ever reach the
-constraint, whatever the discount factor.
+to ~1.05, but the exported chain lands at 1.19 and **rescaling it down to 1.04
+(= FRA/GER) or 1.07 (= KMV) does not fix it** (`_decomp_jac_check` era test) —
+`dβ → 0`, MPC 0.03. So **it is not the variance** — that is ruled out by direct
+test. USA's GRID chain differs from KMV's / FRA's / GER's on several shape
+dimensions that all reduce the constrained fraction:
+  - `kurt Δ1y = 12.8` vs KMV 17.8 / FRA 15.2 / GER 17.8 — thin tail, few rare
+    large drops (GRID-USA is more volatile *and* less leptokurtic, DECISIONS §12);
+  - `β₁ = 2.93` vs FRA 4.27 / GER 5.34 — the transitory component is *more*
+    persistent, so it is worth self-insuring rather than living hand-to-mouth
+    through;
+  - `λ₁ = 0.22` — transitory shocks arrive more often.
+Together: households face a lot of medium-persistence income risk they build
+buffers against, so `< 1%` sit at the constraint whatever the discount factor.
+A clean "reduce kurtosis, hold everything else" test is confounded — kurtosis,
+ergodic variance and transitory persistence are hard to vary independently in
+the discretized KMV chain (`_tail_test2.py`: scaling `λ₂` up drops the kurtosis
+but also the ergodic variance, and the calibration then fails on the *wealth
+distribution* rather than the MPC). The defensible statement is: **the two
+countries with KMV-like earnings shape calibrate; the one whose GRID sample
+departs from it on multiple axes does not, and the departure is not just scale.**
 
 **Where this leaves the fork (much narrower now):**
 - **FRA, GER:** one-asset + death. Done, works. No two-asset needed.
