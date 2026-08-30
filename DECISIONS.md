@@ -773,12 +773,15 @@ stronger than leaving them to be discovered.
 
 ## 16. Step-2 interface notes (from reading the Auclert `annual-review` code)
 
-> Step 2 has its own running log: **`../hank_step2/STEP2_LOG.md`**. It records
-> the baseline reproduction (S1), the resolved frequency question (S2 —
-> quarterly, confirmed six ways), and the one-asset-vs-two-asset assessment (S3
-> — the one-asset model reproduces KMV's 20/80 direct–indirect split almost
-> exactly). The notes below are the pre-step-2 reading of the code and still
-> stand.
+> Step 2 has its own running log: **`../hank_step2/STEP2_LOG.md`**. So far:
+> S1 baseline reproduced & verified; S2 frequency = quarterly (six ways); S3
+> one-asset reproduces KMV's 20/80 split (composition differs — see below);
+> **S4 the raw exported chains do NOT drop into the infinite-horizon model** —
+> their ergodic var(log e) is 1.0–1.8 vs ARS's 0.85, precautionary saving
+> collapses the MPC, and the USA/FRA calibration degenerates. Fix is in the
+> export (target ergodic var, drop `match_var_log`), not the model — see
+> STEP2_LOG §S4. The notes below are the pre-step-2 reading of the code and
+> still stand.
 
 Recorded 2026-08-30 from `household.py` in `shade-econ/annual-review`, so step 2
 starts from facts rather than assumptions. The relevant block is:
@@ -851,12 +854,16 @@ starts from facts rather than assumptions. The relevant block is:
   dispersion rather than KMV's US value; (iii) whether to add a ninth identifying
   moment (longer-horizon autocovariance) as a robustness check. Both for the
   supervisor.
-- **USA `β₂` is on the high side too.** The unrestricted USA estimate implies an
-  ergodic sd of the persistent component of ≈ 1.22 (vs KMV's 0.95), so the
-  exported USA chain has ergodic var(log e) ≈ 1.8 — nearly double KMV's. Not
-  implausible enough to force the §8b treatment, but if the step-2 USA steady
-  state looks off, applying the same ergodic-var anchor to USA (for consistency
-  with GER) is the fallback.
+- **USA `β₂` is on the high side too — now confirmed a problem (STEP2_LOG §S4).**
+  The unrestricted USA estimate implies ergodic sd of the persistent component
+  ≈ 1.22 (vs KMV's 0.95) and ergodic var(log e) ≈ 1.8 (vs ARS's 0.85). In the
+  infinite-horizon step-2 model this breaks the calibration (MPC collapses to
+  0.024 vs the 0.20 target). Two levers: (a) the general fix — target the
+  chain's *ergodic* var(log e) in the export instead of `match_var_log`
+  (§8c) which targets the panel var; (b) pin USA's `β₂` to the KMV ergodic
+  anchor as for GER (§8b) — helps USA (1.8 → ~1.2) but is a partial fix and does
+  not help FRA (whose free `β₂` is already more mean-reverting than the anchor).
+  Lever (a) is the one to pull. Supervisor question.
 - **Restoring a genuine second optimiser (§9) — optional, not blocking.** The
   line scan + DE cross-run stability already carry the identification argument,
   so the estimates are settled. But if a stronger form of the evidence is wanted,
@@ -873,11 +880,23 @@ starts from facts rather than assumptions. The relevant block is:
 - **One-asset vs two-asset model in step 2:** ~~open~~ **largely resolved**
   (STEP2_LOG §S3). The one-asset ARS model (β-heterogeneity) reproduces KMV's
   headline 20/80 direct–indirect split for the monetary shock almost exactly
-  (19.7% direct / 80.3% indirect, first-year, vs KMV's 19/80). The *composition*
-  of the indirect effects differs (asset-return channel +22% vs KMV's −2%,
-  transfer channel smaller) but that is the non-household blocks, not one- vs
-  two-asset. Proceed one-asset. Two-asset only needed if the thesis wants the
-  cross-sectional MPC distribution (KMV Fig 5–6), the wealthy-HtM mechanism as
-  such, or the portfolio channel. Supervisor's call.
+  (19.7% direct / 80.3% indirect, first-year, vs KMV's 19/80). Proceed one-asset.
+  Two-asset only needed if the thesis wants the cross-sectional MPC distribution
+  (KMV Fig 5–6), the wealthy-HtM mechanism as such, or the portfolio channel.
+- **Aggregate match vs channel-level match (STEP2_LOG §S3).** The 20/80
+  direct–indirect *split* matches KMV, but the *composition* of the indirect
+  effects does not (ARS asset-return/capital-gains channel +22% vs KMV's −2%;
+  transfer channel 16% vs 32%) — because of ARS's `capitalization` block and
+  fast fiscal rule vs KMV's φ = ω̄ profit-neutralisation. If the Polish results
+  report a decomposition *by channel* rather than just direct/indirect, that
+  comparison to KMV will not be clean without modifying the non-household
+  blocks. Is the aggregate match sufficient for the thesis? Supervisor question.
+- **Polish `beta` calibration target.** USA/FRA/GER calibrate `beta` to known
+  asset targets (A = 20 = 500% of annual GDP; SCF Lorenz). Poland's wealth
+  moments (NBP HFS / ECB HFCS) are not in hand, and Polish household wealth
+  differs from the US in level *and* composition — so Polish `beta` lands
+  elsewhere and that alone moves MPCs and transmission. "What do we calibrate
+  Polish `beta` to, and what is the asset target" is a thesis-design question
+  for Zoch, not an implementation detail. Raise before the Polish stage.
 - **Poland:** earnings targets (Polish panel data / EU-SILC) and wealth moments
   (NBP HFS / ECB HFCS) still pending.
