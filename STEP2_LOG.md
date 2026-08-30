@@ -114,15 +114,139 @@ portfolio channel.** Supervisor's call.
 
 ---
 
+## S4. Swapping in our chain — the raw chains do not drop into an infinite-horizon model
+
+**What was done.** `swap_chain.py <COUNTRY>` replaces the ARS income process with
+`../kmv_grid_step1/output/<cc>/income_process_Q.txt` (the generator, so their
+`expm(...)` call reconstructs our `P` — verified rows sum to 1, entries ≥ 0),
+re-calibrates `(beta_hi, dbeta, omega)` to the **same** ARS targets (A = 20,
+impact labor MPC = 0.20, SCF Lorenz curve) — the agreed "re-calibrate per chain"
+convention — then rebuilds the GE steady state and reruns the monetary /
+deficit IRFs and the Fig-3b decomposition. `results/swap_<cc>.json`.
+
+**Headline result — the free-`β₂` chains carry too much ergodic earnings risk
+for a stationary HANK.** The estimation matched GRID's *36-year working-life*
+moments (§2). The ARS model is **infinite-horizon** and confronts households
+with the chain's **ergodic** distribution, whose `var(log e)` is far higher
+because a near-permanent component keeps accumulating dispersion the panel never
+sees:
+
+| chain | ergodic var(log e) | their KMV chain | data cross-section (GRID `std_log_inc²`) |
+|---|---|---|---|
+| GER (β₂ **pinned**, §8b) | 1.04 | 0.85 | 0.65 |
+| FRA (β₂ free) | 1.04 | 0.85 | 0.48 |
+| USA (β₂ free) | **1.79** | 0.85 | 0.96 |
+
+**Calibration outcome:**
+
+| | GER (pinned) | FRA (free) | USA (free) | baseline |
+|---|---|---|---|---|
+| A = 20 hit? | ✓ (20.00) | ✓ (20.00) | ✓ (20.05) | ✓ |
+| SCF Lorenz hit? | ✓ (err 0.00) | ✓ (err −0.02) | ✗ (err −0.37) | ✓ |
+| **MPC = 0.20 hit?** | **✓ (0.200)** | **✗ (0.028)** | **✗ (0.024)** | ✓ |
+| `dbeta` (β-heterogeneity) | 0.070 (healthy) | 0.005 (collapsed) | ~0 (collapsed) | 0.088 |
+| frac hand-to-mouth | 0.220 | 0.005 | 0.006 | 0.279 |
+| β_ave shift vs baseline | +2% (0.954→0.975) | — (degenerate) | — (degenerate) | — |
+
+For **USA and FRA the calibration degenerates**: the precautionary-saving motive
+from the high ergodic risk means almost no households are hand-to-mouth, so the
+aggregate MPC cannot be pushed to 0.20 by any `(β_hi, dβ, ω)` — the optimiser
+collapses `dβ` to ~0 and lands at MPC ≈ 0.03. **This is structural, not an
+optimiser artifact** — a 5-start (USA) / 5-start (FRA) multistart
+(`_calib_multistart.py`, `results/calib_multistart.json`) converges to the same
+degenerate point every time (USA cost 0.0848 ± 1e-6; FRA cost 0.0149). The
+MPC = 0.20 target is genuinely unreachable with these chains in this model.
+**This kills the KMV replication**:
+with a low MPC the indirect (income) amplification is weak, and the monetary
+decomposition shifts toward direct (year-1 direct share USA 0.39, FRA 0.46, vs
+baseline 0.20). *(USA's decomposition is also unreliable — 5% residual from an
+un-cleared asset market at the degenerate calibration.)*
+
+**GER (β₂ pinned) is the one that works** — and its result is informative:
+
+| GER swap | value | baseline | KMV Table 7 |
+|---|---|---|---|
+| β_ave | 0.975 | 0.954 | — |
+| frac hand-to-mouth | 0.220 | 0.279 | — |
+| MPC (labor / unweighted, impact) | 0.20 / 0.25 | 0.20 / 0.29 | — |
+| monetary dY impact (HA) | 2.31 | 2.41 | — |
+| monetary dY cum-40q (HA) | 24.2 | 28.3 | — |
+| **decomposition (year 1): direct / indirect** | **30 / 70** | 20 / 80 | 19 / 80 |
+| — indirect: labor / tax / cap-gains | 32 / 13 / 24 | 42 / 16 / 23 | 51 / 32 / −2 |
+
+So even the well-behaved chain **shifts the monetary decomposition ~10 pp from
+indirect toward direct** (80/20 → 70/30). "Indirect effects dominate" *survives*,
+but is weaker than baseline and than KMV — mainly because our chain's
+transitory/persistent structure passes less of the equilibrium wage response
+through to consumption (indirect-labor share 42% → 32%).
+
+### Diagnosis and the fix (supervisor decision)
+
+Root cause is the **ergodic-vs-lifecycle-panel gap** (DECISIONS §2), realised in
+the model. Two things need to change, both in the **chain export**, not the model:
+
+1. **Drop `match_var_log` for the step-2 export.** It rescales the grid so the
+   *36-year panel* var(log y) matches the continuous process — which, for a
+   near-permanent component, *inflates* the ergodic variance further. An
+   infinite-horizon model needs the chain's *ergodic* variance controlled.
+
+2. **Rescale the combined grid so the chain's ergodic `var(log e)` hits a
+   target.** Candidates:
+   - **KMV's ≈ 0.85** — clean apples-to-apples with ARS ("same ergodic
+     dispersion, our persistence/kurtosis shape"). Recommended for the
+     *validation* exercise: it isolates what the process *shape* does.
+   - **the data cross-section** (GRID `std_log_inc²`: USA 0.96, FRA 0.48,
+     GER 0.65) — the GRID number *is* a stationary cross-section of prime-age
+     males, so arguably the right target; but then the models differ in scale
+     too and the calibration re-does more work.
+
+3. Separately, **pinning `β₂` (§8b) helps USA** (ergodic var 1.79 → ~1.19) but
+   **not FRA** (FRA's free `β₂ = 0.0052` is already *more* mean-reverting than
+   the KMV anchor 0.0046 would give — pinning FRA moves the wrong way). FRA's
+   problem is the export scale, not `β₂`. So the ergodic-var rescale (point 2)
+   is the general fix; `β₂` pinning is a separate, USA/GER-only lever.
+
+*A caveat on point 2.* FRA and GER have the **same** ergodic var(log e) (1.04)
+yet FRA's calibration fails and GER's works. So the ergodic *variance* alone does
+not determine whether a chain is usable — the process *shape* matters too. GER
+has a higher persistent-shock arrival rate (`λ₂ = 0.0102` vs FRA 0.0070) and
+more kurtosis, which puts more households near the borrowing constraint (frac
+hand-to-mouth 0.22 vs FRA 0.005) and lets the MPC target be hit. The ergodic-var
+rescale is necessary but may not be sufficient; the rebuilt-chain swap will show
+whether it is.
+
+**Recommendation:** rebuild the step-2 chains with an ergodic-`var(log e)`
+target (≈ 0.85, matching ARS) instead of `match_var_log`; no re-estimation
+needed. Then re-run the swaps. Do not proceed to the §8d var-Δ1 fix until the
+scale question is settled — they interact.
+
+### Also settled here
+
+- **`beta` moves little when the chain is well-scaled.** GER: β_ave +2%,
+  β_lo +1%. So a well-behaved chain does *not* imply wildly different earnings
+  risk — the apparent "big β move" for USA/FRA is the degenerate calibration,
+  not a real signal.
+- The **generator/`P` interface works** — `expm(income_process_Q.txt)`
+  reconstructs our `P`, assertions pass, `n_e = 75` flows through.
+
+---
+
 ## Open (step 2)
 
-- **`beta` calibration convention.** `beta` (the discount-factor grid) is
-  calibrated to an asset target (A = 20) *given the income process*. Swapping our
-  chain changes the calibrated `beta`. Any baseline-vs-ours comparison needs a
-  stated convention: (a) re-calibrate `beta` per chain (matches wealth by
-  construction, isolates the effect of the chain on *dynamics* / MPCs / IRFs), or
-  (b) hold `beta` fixed at the baseline value (lets the chain move the wealth
-  distribution too). (a) is the cleaner validation design. Supervisor question.
-- **S4 var Δ1 fix** — discretize component 1 as a near-iid quarterly shock
-  (DECISIONS §8d), then re-check chain var Δ1 vs continuous and whether the
-  wealth/MPC picture moves vs S3.
+- **Chain export scale for an infinite-horizon model (S4).** Ergodic-`var(log e)`
+  target instead of `match_var_log`; value = KMV's ≈ 0.85 (validation) or the
+  data cross-section. Supervisor question. Blocks everything downstream.
+- **Whether the aggregate 80/20 decomposition match is enough**, or the
+  channel-level composition (labor / tax / capital-gains split) also has to line
+  up with KMV — the latter needs changes to the non-household blocks (asset
+  pricing, fiscal rule). See §S3. Supervisor question.
+- **Polish `beta` calibration target.** For USA/FRA/GER we calibrate to known
+  asset targets (A = 20 = 500% of annual GDP, SCF Lorenz). Poland's wealth
+  moments (NBP HFS / ECB HFCS) are not in hand, and Polish household wealth
+  differs from the US in level *and* composition, so Polish `beta` will land
+  elsewhere and that alone moves MPCs and transmission. "What do we calibrate
+  Polish `beta` to, and what is the asset target" is a thesis-design question
+  for Zoch, not an implementation detail.
+- **S4 var Δ1 fix** (DECISIONS §8d) — after the scale question, discretize
+  component 1 as a near-iid quarterly shock, re-check var Δ1 vs continuous and
+  whether wealth/MPC/IRFs move.
