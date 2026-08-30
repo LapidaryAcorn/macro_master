@@ -297,12 +297,18 @@ ineffective mechanism, not a fix.
    persistent component to KMV's (DECISIONS §8b `ErgodicVarConstraint`) → `β₂ ≈
    0.0105`, ergodic var → ~1.2. Re-estimate USA (~50 min). FRA and GER need
    nothing on this axis (already ≈ KMV's 1.07).
-2. **FRA** — its ergodic variance is fine; the S4 failure is process *shape*
-   (lower `λ₂` → persistent shocks rarer → fewer households recently hit by a
-   large drop → fewer near the constraint, so ARS's `β`-het can't reach MPC
-   0.20). Test in progress (`_betahet_sweep.py`): can a wider `β`-heterogeneity
-   (lower `β_lo`) hit MPC 0.20 while holding `A` and the SCF Lorenz? If yes, FRA
-   is a calibration-family question, not a chain problem.
+2. **FRA** — its ergodic variance is fine (1.04 ≈ KMV's 1.07); the S4 failure
+   is process *shape* (lower `λ₂ = 0.007` vs GER's 0.010 → persistent shocks
+   rarer → fewer households recently hit by a large drop → fewer near the
+   constraint). Probing wider `β`-heterogeneity (`_fra_betahet.py`,
+   `results/fra_betahet.json`): as `β_lo` falls, MPC rises to 0.4–0.6 **but `A`
+   collapses to 3–12 (never 20) and the SCF Lorenz goes badly off** (err −2 to
+   −4.5, frac-at-zero 0.4–0.6). So (`A = 20`, MPC = 0.20, SCF Lorenz) look
+   **jointly infeasible** for FRA in the one-asset `β`-het family — you can hit
+   `A = 20` (near-homogeneous patient `β`, MPC ≈ 0.03) *or* high MPC (impatient
+   types, `A ≈ 5`), not both. One more targeted calibration seeded from GER's
+   working solution is running (`_fra_final.py`) to confirm no `β_lo ≈ 0.92`
+   sweet spot exists (GER's does).
 3. If neither USA nor FRA can be made to work in one-asset, that is the
    argument for the **two-asset** model after all (contra §S3, which only
    checked the *decomposition* reproduces — not whether *our chains* calibrate).
