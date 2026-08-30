@@ -776,15 +776,16 @@ stronger than leaving them to be discovered.
 > Step 2 has its own running log: **`../hank_step2/STEP2_LOG.md`**. So far:
 > S1 baseline reproduced & verified; S2 frequency = quarterly (six ways); S3
 > one-asset reproduces KMV's 20/80 split (composition differs — see below);
-> **S4 the raw exported chains do not calibrate in the one-asset model** for
-> USA and FRA (`dβ → 0`, MPC ≈ 0.03 vs target 0.20); GER works. **S5** tested
-> the KMV stochastic-death fix — it does *not* work in a one-asset model (death
-> generates MPC only via KMV's two-asset structure), and KMV's own ergodic
-> variance is 1.07 not 0.85, so FRA/GER (1.04) already match KMV and only USA
-> (1.79) is a scale outlier — a `β₂`×`σ₂` issue, not a general rescale. Current
-> state: USA needs a `β₂` re-estimation; FRA is under test; if neither
-> calibrates in one-asset, revisit two-asset. The notes below are the
-> pre-step-2 reading of the code and still stand.
+> **S4** the raw exported chains do not calibrate one-asset for USA/FRA
+> (`dβ → 0`, MPC ≈ 0.03); GER works. **S5**: KMV's ergodic var is 1.07 not 0.85
+> (FRA/GER at 1.04 already match); death *alone* does not generate MPC in
+> one-asset — but **death + ARS β-heterogeneity together DO make FRA and GER
+> calibrate** (clean, MPC 0.20, KMV decomposition reproduced). **USA** does not
+> calibrate even with `β₂` pinned + death — its GRID chain lacks KMV's
+> leptokurtic tail. Proposed: FRA/GER on one-asset + death; USA validated by the
+> S1 baseline, GRID-USA a sensitivity. **S6** costs the two-asset fallback
+> (~2 wk, SSJ `examples/two_asset`). The notes below are the pre-step-2 reading
+> of the code and still stand.
 
 Recorded 2026-08-30 from `household.py` in `shade-econ/annual-review`, so step 2
 starts from facts rather than assumptions. The relevant block is:
@@ -857,18 +858,19 @@ starts from facts rather than assumptions. The relevant block is:
   dispersion rather than KMV's US value; (iii) whether to add a ninth identifying
   moment (longer-horizon autocovariance) as a robustness check. Both for the
   supervisor.
-- **USA `β₂` — confirmed a step-2 problem (STEP2_LOG §S4–S5).** USA's
-  unrestricted estimate implies ergodic `var(log e) ≈ 1.79`, against **KMV's own
-  1.07** (`λσ²/2β` at KMV Table 4; *not* the ARS 33-state process's 0.85 — that
-  distinction was got wrong in §S4 and corrected in §S5). FRA and GER (both
-  1.04) already match KMV; only USA is an outlier, driven by `β₂ = 0.0066` ×
-  `σ₂ = 1.32`. In the one-asset model USA's calibration degenerates (MPC 0.024).
-  Fix: pin the ergodic variance of USA's persistent component to KMV's via the
-  §8b `ErgodicVarConstraint` → `β₂ ≈ 0.0105`, ergodic var → ~1.2. Re-estimate
-  USA (~50 min). *Not* a general rescale — FRA/GER need nothing on this axis.
-  The alternative — adding KMV's stochastic death instead of touching `β₂` —
-  **was tested (§S5) and does not work in a one-asset model.** Supervisor
-  question.
+- **USA `β₂` pinned — DONE (2026-08-30), but it did not fix step 2.** USA's
+  unrestricted estimate implied ergodic `var(log e) ≈ 1.79` vs KMV's own 1.07,
+  so USA was re-estimated with `β₂` derived from the same `ErgodicVarConstraint`
+  as GER (→ `β₂ = 0.0136`, `σ₂` 1.32 → 1.53, ergodic sd of the persistent
+  component = KMV's 0.954). DE and TikTak agree; OOS f 0.033 (vs 0.006
+  unrestricted — the constraint costs USA fit, as it does GER). `output/usa/`
+  now holds the pinned chain; the unrestricted one is kept at
+  `output/usa_free_beta2/`. **This is now the USA canonical.** But in step 2
+  USA *still* does not calibrate in one-asset even with `β₂` pinned + stochastic
+  death (STEP2_LOG §S5): the GRID-USA chain lacks KMV's leptokurtic tail
+  (`kurt Δ1y` 12.8 vs 17.8), so too few households reach the constraint whatever
+  the discount factor. FRA and GER *do* calibrate with death + β-het. Proposed:
+  the S1 baseline (KMV's chain) is the US validation; GRID-USA is a sensitivity.
 - **The §8b ergodic-plausibility argument needs a light revisit** given §S5:
   it is still right that a stationary HANC confronts households with the ergodic
   distribution, but the reference point is KMV's 1.07, not "implausible for any

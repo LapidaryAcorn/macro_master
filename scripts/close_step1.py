@@ -53,12 +53,17 @@ PERSISTENT = ("lambda2", "beta2", "sigma2")
 # lambda2 * sigma2^2 / (2 beta2) at (0.007, 0.009, 1.53).
 KMV_ERGODIC_VAR2 = 0.007 * 1.53 ** 2 / (2.0 * 0.009)
 
-# Per-country parameter restrictions (see close-out decisions):
+# Per-country parameter restrictions (see close-out decisions + STEP2_LOG S5):
 #   GER's persistent-component mean reversion (beta2) is not identified by the
-#   16-year German panel; pin it so the ergodic variance of that component
-#   equals KMV's, and estimate the other five parameters.
+#   16-year German panel -> pin it so the ergodic variance of that component
+#   equals KMV's, estimate the other five.
+#   USA's free beta2 (0.0066) x sigma2 (1.32) implies an ergodic var(log e) of
+#   ~1.79, well above KMV's own 1.07, which breaks the step-2 stationary HANK
+#   calibration -> apply the same pin to USA.
+_PIN_BETA2 = {"beta2": ErgodicVarConstraint("2", target_var=KMV_ERGODIC_VAR2)}
 COUNTRY_DERIVE = {
-    "GER": {"beta2": ErgodicVarConstraint("2", target_var=KMV_ERGODIC_VAR2)},
+    "GER": dict(_PIN_BETA2),
+    "USA": dict(_PIN_BETA2),
 }
 COUNTRY_FIXED: dict[str, dict] = {}
 
