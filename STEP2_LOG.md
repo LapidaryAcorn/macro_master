@@ -290,8 +290,34 @@ two-asset wealthy-hand-to-mouth mechanism** — a permanently-impatient type tha
 stays at the constraint. Bolting death onto the one-asset model adds an
 ineffective mechanism, not a fix.
 
-**Consequence for the diagnosis.** The USA/FRA calibration failure (§S4) is
-*not* solved by the KMV death mechanism. The live options are:
+**But death + `β`-heterogeneity *together* DO rescue FRA** (`_death_betahet.py`,
+`results/death_betahet.json`). Re-calibrating *both* mechanisms jointly to the
+three targets:
+
+| chain | converges? | MPC | A | `dβ` | `β_lo` | frac at 0 |
+|---|---|---|---|---|---|---|
+| FRA | **yes, exactly** (resid ~1e-12) | 0.20 | 20.0 | 0.093 | 0.905 | 0.225 |
+| baseline | no — overshoots, `dβ` → 0.40 bound, MPC 0.35 | — | 20.0 | 0.40 | 0.60 | 0.354 |
+| GER | (running) | | | | | |
+
+So the mechanisms are **complementary, not redundant**: `β`-het supplies the
+permanently-impatient type, death supplies the zero-wealth injection, and for
+FRA's low-`λ₂` chain **you need both** to get enough households to the
+constraint — `β`-het alone (§S4) left FRA stuck at MPC 0.03. The *baseline*
+chain already has enough hand-to-mouth from `β`-het alone, so adding death there
+overshoots (that solve hit the `dβ` bound and is not a clean calibration — a
+lower `dβ` should work; the multistart bounds were too wide).
+
+**Revised reading:** death is *not* inert. The right one-asset structure is
+**ARS's `β`-heterogeneity plus KMV's stochastic death** — which is what KMV
+actually have (death) merged with what ARS actually have (`β`-het). With both,
+FRA calibrates. This needs the full swap re-run (steady state, wealth/MPC
+distributions, IRFs, decomposition) for USA (β₂-pinned) / FRA / GER before the
+fork is settled — the death mechanism may make (c) two-asset unnecessary.
+
+**Consequence for the diagnosis (pre-`_death_betahet` — superseded above for
+FRA).** The USA/FRA calibration failure (§S4) is *not* solved by death *alone*.
+The live options were:
 1. **USA** — a targeted `β₂` fix. USA's ergodic var 1.79 vs KMV's 1.07 comes
    from `β₂ = 0.0066` combined with `σ₂ = 1.32`. Pin the ergodic variance of the
    persistent component to KMV's (DECISIONS §8b `ErgodicVarConstraint`) → `β₂ ≈
