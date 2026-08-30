@@ -318,15 +318,81 @@ ineffective mechanism, not a fix.
     French wealth distribution / MPC target instead of the US SCF ones; (c) go
     **two-asset**, where the liquid/illiquid transaction cost generates
     wealthy-hand-to-mouth regardless of the earnings-process shape.
-  - **Relevance to Poland (the actual thesis target):** if the Polish earnings
-    process turns out shaped like France's (low `λ₂`, rare persistent shocks),
-    the one-asset model won't calibrate for Poland either. That is a genuine
-    argument for building two-asset now rather than discovering the problem at
-    the Polish stage. Supervisor decision.
+### The Poland argument for building two-asset now
 
-**Files:** `death.py`, `_death_homog.py` / `results/death_homog.json`,
-`_calib_death.py` / `results/calib_death.json` (ζ=1/180 no-annuity multistart,
-also degenerate).
+**The thesis target is Poland.** The Polish earnings process is not yet estimated
+(data pending). If it comes out **France-shaped** — low `λ₂`, rare persistent
+shocks — then, by exactly the mechanism confirmed for FRA above, the **one-asset
+model will not calibrate for Poland**: `(A, MPC, wealth distribution)` will be
+jointly infeasible, and we would discover this only *after* building the entire
+monetary/fiscal analysis on the one-asset path. France is not an unusual case —
+lower `λ₂` than the US is a plausible European pattern, and Poland's labour
+market (large informal sector, high job turnover at the low end, compressed
+formal wage ladder) could go either way. Committing to one-asset is a bet that
+Poland is Germany-shaped, taken before the Polish data are in.
+
+**KMV's own argument reinforces this.** KMV (2018) build two assets precisely
+because a **liquid-wealth-only** calibration "abstracts entirely from capital",
+and the quantity and price responses of capital are a material part of the
+**indirect** channel — which is the exact decomposition this thesis replicates.
+A one-asset model with equity + bonds (ARS's structure, §S1) has a thin version
+of this (the `capitalization` block), but no investment margin and no capital
+stock; KMV's Table 2 indirect effects run partly through capital that a
+one-asset model does not have. So even where one-asset *calibrates* (GER), the
+channel decomposition it produces is structurally incomplete relative to what
+the thesis is trying to reproduce (this is the §S3 "composition differs"
+finding, seen from the model-structure side).
+
+**Files:** `death.py`, `_death_homog.py`/`results/death_homog.json`,
+`_death_betahet.py`/`results/death_betahet.json` (death + β-het, both
+re-calibrated), `_calib_death.py`, `_fra_betahet.py`, `_fra_final.py`.
+
+---
+
+## S6. Costing the two-asset option (fork choice (c))
+
+**Does a two-asset base exist? Yes, and it runs.** `sequence_jacobian.examples.
+two_asset` is a complete, tested two-asset HANK (Auclert–Bardóczy–Rognlie–Straub
+2021, Econometrica — the Kaplan–Violante/KMV structure): liquid `b`, illiquid
+`a`, convex adjustment cost `Ψ(a', a; χ₀, χ₁, χ₂)`, capital + investment,
+sticky prices *and* wages. `two_asset.dag()` solves its steady state in **6 s**
+on this machine (`β = 0.973`, `χ₁ = 4.88`, illiquid `A = 13`, liquid `B = 1.04`,
+asset market clears). The hard part — the 3-D `(z, b, a)` EGM het block with the
+adjustment cost — is **already written** (`hetblocks/hh_twoasset.py`).
+
+**The chain swap is identical to what we have done.** The z-process enters
+through `make_grids` → `markov_rouwenhorst(rho, sigma, N)`, the same single
+injection point as one-asset. Replace with our `income_process_Q.txt` loader
+(≈ the 10 lines already in `swap_chain.py`); `nZ → 75`. No new discretization
+work.
+
+**What actually needs doing (on top of what we have):**
+
+| task | effort |
+|---|---|
+| Swap our chain into `two_asset.make_grids`; retune `nB/nA` grids for `nZ = 75` | ~1 day |
+| Re-calibrate: unknowns `(β, χ₁)`, targets `asset_mkt = 0` and liquid `B = B̄`; pick `B̄` and illiquid-wealth / `tot_wealth` targets (SCF liquid vs illiquid split — data we'd need to assemble) | ~2 days |
+| The GE structure differs from ARS's: capital + investment (`Q, K, δ, εI`), sticky wages (`union`, `κw`), a bond/equity fund (`finance`, `ω`), distortionary labour tax. Understand it, decide which pieces to keep vs simplify toward KMV | ~2 days |
+| Re-derive the direct/indirect **and** channel decomposition (§S3) for this model — it has *more* channels (capital return, investment), which is closer to KMV's Table 2 | ~2–3 days |
+| Re-validate against KMV: steady-state wealth distribution (liquid + illiquid), MPC distribution, monetary decomposition | ~2 days |
+| Re-run for USA/FRA/GER, check all three calibrate | ~1 day |
+
+**Estimate: ~2 weeks of focused work**, most of it calibration and
+decomposition, not model-building. Risk is low — the model and solver exist and
+run; the uncertainty is in the wealth-split calibration data and in how much of
+the richer GE structure to carry.
+
+**Why not KMV's own replication code:** it is continuous-time
+(HJB/KFE finite-difference, MATLAB), a different paradigm. Our discrete Markov
+chain does not drop in — KMV parameterise the jump-drift process directly. The
+one appealing version is feeding KMV our estimated `(λ, β, σ)` *directly*
+(zero discretization error, KMV's validated solver), but that means a MATLAB
+toolchain, their two-asset-only model, and re-doing the cross-country plumbing
+in an unfamiliar codebase. Higher risk, ~3 weeks, only worth it if the
+discretization (§8d) proves to be a first-order problem.
+
+**Recommendation to put to the supervisor:** if the fork goes to two-asset, use
+`sequence_jacobian.examples.two_asset` as the base (~2 weeks), not KMV's MATLAB.
 
 ---
 
