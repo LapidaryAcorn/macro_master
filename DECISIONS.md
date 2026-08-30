@@ -685,8 +685,31 @@ error would not produce that coherent a pattern. A likely second contributor is
 GKOS's minimum-earnings threshold, which trims volatile low earners and is not
 replicated here.
 
-**For the write-up.** State this openly and early. A reader who knows KMV will
-notice the difference; better to have explained it than to be asked.
+**Step-2 finding (2026-08-31) — the GRID-USA chain does not support the KMV
+mechanism, and that is the informative part.** In step 2 (STEP2_LOG §S4–S5) the
+GRID-USA chain does not merely *produce different numbers* in the one-asset
+HANK — it **fails to calibrate at all**: no discount-factor configuration (with
+or without `β₂` pinned, with or without stochastic death, and after rescaling
+the ergodic variance to KMV's) can jointly hit `A = 20`, MPC `= 0.20`, and the
+SCF Lorenz curve. The aggregate MPC collapses to ≈ 0.03. **It is not the
+variance** (ruled out by direct test — rescaling the ergodic variance to KMV's
+1.07 or to FRA/GER's 1.04 does not help). GRID-USA's earnings *shape* departs
+from KMV's on several axes that all reduce the constrained fraction: thin tail
+(`kurt Δ1y` 12.8 vs KMV 17.8), a more persistent transitory component
+(`β₁ = 2.93` vs FRA 4.27 / GER 5.34), and more frequent transitory shocks
+(`λ₁ = 0.22`). Households face a lot of medium-persistence income risk they
+build precautionary buffers against, so `< 1%` end up at the constraint.
+**France and Germany — whose GRID `kurt Δ1y` (15.2, 17.8) and process shape are
+KMV-like — do calibrate** (one-asset + death, MPC 0.20, KMV decomposition
+reproduced). So this is a documented result: *the shape of the earnings
+process, not just its variance, determines whether it supports the KMV
+transmission mechanism, and the GRID-USA sample's shape does not.*
+
+**For the write-up.** State the sample difference openly and early. Then, in
+step 2, state the mechanism consequence explicitly: the US validation runs on
+KMV's own chain (the S1 baseline reproduces their 20/80 split); the GRID-USA
+chain is reported as a sensitivity whose *failure* to support the mechanism is
+itself the finding.
 
 ---
 
@@ -891,12 +914,23 @@ starts from facts rather than assumptions. The relevant block is:
   protection), or should be reported without one.
 - **Chain size for step 2:** 75 states is the current default; may need to drop
   to 33 if the model solve is too slow.
-- **One-asset vs two-asset model in step 2:** ~~open~~ **largely resolved**
-  (STEP2_LOG §S3). The one-asset ARS model (β-heterogeneity) reproduces KMV's
-  headline 20/80 direct–indirect split for the monetary shock almost exactly
-  (19.7% direct / 80.3% indirect, first-year, vs KMV's 19/80). Proceed one-asset.
-  Two-asset only needed if the thesis wants the cross-sectional MPC distribution
-  (KMV Fig 5–6), the wealthy-HtM mechanism as such, or the portfolio channel.
+- **One-asset vs two-asset model in step 2 — resolved for USA/FRA/GER; Poland
+  is the trigger.** The one-asset ARS model + KMV stochastic death (`death.py`,
+  STEP2_LOG §S5) calibrates cleanly for **FRA and GER** — MPC 0.20, monetary IRF
+  within 7% of baseline, KMV's 20/80 split reproduced (§S3). **USA** does not
+  calibrate (thin GRID-USA tail, §12) but is validated by the S1 baseline on
+  KMV's chain. So one-asset is the plan.
+  **Trigger for switching to two-asset: the Polish estimated chain is
+  GRID-USA-shaped** — `kurt Δ1y` well below ≈ 15 *and/or* a slow-decaying
+  transitory component (`β₁` ≲ 3). If Poland looks like France/Germany
+  (`kurt Δ1y` ≳ 15, `β₁` ≳ 4), one-asset + death handles it. If it looks like
+  GRID-USA (thin tail, persistent transitory), the one-asset model will not
+  calibrate for Poland and the two-asset model (STEP2_LOG §S6, ≈ 2 weeks, SSJ
+  `examples/two_asset`) is required. Do not start building until the Polish
+  estimate is in hand. The check is quick — run `swap_death.py` on the Polish
+  chain once it exists. Two-asset would also be wanted regardless if the thesis
+  needs the cross-sectional MPC distribution (KMV Fig 5–6), the wealthy-HtM
+  mechanism as such, or the portfolio channel.
 - **Aggregate match vs channel-level match (STEP2_LOG §S3).** The 20/80
   direct–indirect *split* matches KMV, but the *composition* of the indirect
   effects does not (ARS asset-return/capital-gains channel +22% vs KMV's −2%;
