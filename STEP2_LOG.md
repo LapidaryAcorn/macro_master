@@ -315,17 +315,34 @@ merged with what ARS actually have. Full swap re-run (`swap_death.py`,
 then steady state / wealth / MPC / IRFs / decomposition vs the infinitely-lived
 baseline):
 
-| with death + β-het | calibrates? | β_ave | frac HtM | MPC | mon. dY impact | decomp yr1 (direct/indirect) |
+| with death + β-het (Jacobian-fixed) | calibrates? | β_ave | frac HtM | MPC | mon. dY impact (cum-40) | decomp yr1 direct / indirect |
 |---|---|---|---|---|---|---|
-| baseline (their KMV chain) | 20 / 80 | 0.954 | 0.279 | 0.20 | 2.41 | 20 / 80 |
-| **FRA** | **yes** | 0.970 (+2%) | 0.225 | 0.200 | 2.24 (−7%) | 28 / 78 |
-| **GER** | **yes** | 0.976 (+2%) | 0.250 | 0.200 | 2.26 (−6%) | 26 / 80 |
-| **USA** (β₂-pinned re-estimate) | **no** | 0.990 | 0.011 | 0.029 | 1.81 | (degenerate) |
+| baseline (their KMV chain) | — | 0.954 | 0.279 | 0.20 | 2.41 (28.3) | 20 / 80 |
+| **FRA** | **yes, exact** | 0.970 (+2%) | 0.225 | 0.200 | 2.29 (−5%) / 23.6 (−17%) | **25.5 / 74.5** |
+| **GER** | **yes, exact** | 0.976 (+2%) | 0.250 | 0.200 | 2.33 (−4%) / 24.0 (−15%) | **24 / 76** |
+| **USA** (β₂-pinned re-estimate) | **no** | 0.990 | 0.011 | 0.029 | 1.85 (−23%) | degenerate |
 
-**FRA and GER now work in one-asset** — clean calibration, MPC 0.20, monetary
-IRF within 7% of baseline, "indirect dominates" reproduced (≈27/78, vs KMV's
-19/80). β moves only +2%. This likely **makes fork (c) two-asset unnecessary
-for FRA/GER**.
+*(indirect breakdown, FRA / GER: labour 33 / 34.5, tax 14 / 14.5, capital-gains
+27.5 / 27 — of the total, in %.)*
+
+**FRA and GER work in one-asset** — clean calibration (residuals ~1e-12), MPC
+0.20, monetary IRF impact within 5% of baseline, **"indirect dominates"
+reproduced: ≈75% indirect, vs KMV's 81% and baseline's 80%.** The direct share
+(~25%) runs a few points above KMV's 19%, because our estimated transitory/
+persistent structure passes less of the equilibrium wage response through to
+consumption (indirect-labour share 33% vs baseline's 42%). β moves only +2%.
+This **makes fork (c) two-asset unnecessary for FRA/GER**.
+
+> **Jacobian bug fixed** (`death.py`, 2026-08-31). The `ForwardShockableDeathLottery1D`
+> transition inherited the plain `PolicyLottery1D` `forward` / `expectation`
+> instead of the death-modified ones — `het_block` builds `law_of_motion` from
+> the *shockable* transitions and propagates the fake-news curlyE / curlyD
+> vectors through them, so every Jacobian row at horizon ≥ 1 ignored death (the
+> impact row stayed right). Symptom: the decomposition identity was ~10% off and
+> `Jacobian` vs `impulse_nonlinear` diverged 45% at later horizons. After the fix
+> (multiple-inherit from `DeathLottery1D`), the identity holds to 1e-6 and
+> Jac-vs-nonlinear is 0.8% (linearization error). The table above and all
+> `swap_death_*.json` are post-fix. `_decomp_jac_check.py` is the regression test.
 
 **USA still does not calibrate, even with β₂ pinned *and* death.** The
 β₂-pin re-estimate (DECISIONS §8b, now applied to USA — `β₂ = 0.0136`, ergodic
@@ -350,14 +367,9 @@ constraint, whatever the discount factor.
   tails), one-asset + death won't calibrate for Poland either. If it is
   FRA/GER-shaped, it will. Two-asset remains the hedge — see §S6 cost (~2 wk).
 
-**Caveat on the decomposition split:** with the death block, the channel
-decomposition identity (`dC_r + dC_labor + dC_tax + dC_capgains = dY`) has a
-**~10% residual** (vs 0.2% without death) — a consistent, systematic gap, so a
-bug in the death block's Jacobian (`expectation` / `forward_shock` override) or
-a missing channel, not noise. The *total* IRF, the steady state, the MPC and
-the direct/indirect *direction* are unaffected; the exact channel percentages
-are ±3pp until this is chased. `TODO` before the decomposition goes in the
-thesis.
+**Decomposition identity — fixed** (was ~10% off with the death block; now
+1e-6). See the Jacobian-bug note above. The 25/75 figures are final, not
+provisional.
 
 **Consequence for the diagnosis (pre-`_death_betahet` — superseded above for
 FRA).** The USA/FRA calibration failure (§S4) is *not* solved by death *alone*.
@@ -477,9 +489,8 @@ discretization (§8d) proves to be a first-order problem.
   (KMV's own chain), with the GRID-USA chain reported as a sensitivity. Poland
   is the residual risk (needs two-asset only if the Polish process is
   USA-shaped). Supervisor question, but the scope is now small.
-- **Decomposition identity has a ~10% residual with the death block** (§S5
-  caveat) — chase before the channel decomposition goes in the thesis. Does not
-  affect the steady state, total IRF, MPC, or direct/indirect direction.
+- ~~Decomposition identity has a ~10% residual with the death block~~ **FIXED**
+  (§S5, `death.py` shockable-transition MRO) — identity now holds to 1e-6.
 - ~~Chain export scale (rescale to 0.85)~~ — **withdrawn** (§S5 correction):
   0.85 is the ARS process, not KMV's target (1.07); FRA/GER already match, only
   USA is high and that is a `β₂` issue, not a rescale issue.
