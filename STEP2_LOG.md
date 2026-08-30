@@ -220,6 +220,18 @@ target (≈ 0.85, matching ARS) instead of `match_var_log`; no re-estimation
 needed. Then re-run the swaps. Do not proceed to the §8d var-Δ1 fix until the
 scale question is settled — they interact.
 
+> **Correction (see §S5).** Two things from the KMV paper revise this:
+> (1) KMV's *own* implied ergodic variance at their Table 4 parameters is
+> `λσ²/(2β) = 0.159 + 0.910 = 1.07`, **not** 0.85 — 0.85 is the ARS baseline
+> *process*, a specific 33-state discretization, not KMV's target. So the
+> rescale target, if any is used, is **1.07**, and it **only binds for USA**
+> (1.79); FRA and GER (1.04) already match KMV almost exactly and need no
+> rescaling. (2) KMV's death mechanism does *not* reduce cross-sectional
+> earnings dispersion — newborns draw `z` from its ergodic distribution — so
+> "the model uses the ergodic distribution" is right, but our FRA/GER chains
+> are *already* at KMV's ergodic dispersion. The USA outlier is driven
+> specifically by our `β₂ = 0.0066` (× `σ₂ = 1.32`) against KMV's `β₂ = 0.009`.
+
 ### Also settled here
 
 - **`beta` moves little when the chain is well-scaled.** GER: β_ave +2%,
@@ -231,11 +243,86 @@ scale question is settled — they interact.
 
 ---
 
+## S5. Does KMV's stochastic death fix the one-asset calibration? No.
+
+**Hypothesis (from the KMV paper).** KMV footnote 15: households die at
+`ζ = 1/180` per quarter and newborns start at **zero wealth**; this is stated to
+be the device that puts enough households at zero illiquid wealth to generate
+the aggregate MPC. ARS's one-asset code is infinitely-lived with no such device
+(**confirmed** — no death / mortality / rebirth / survival anywhere in
+`annual-review/*.py` or the notebooks; SSJ has no built-in support either). So:
+add it and see whether the USA/FRA calibrations stop degenerating.
+
+**Implementation** (`death.py`): subclass SSJ's `HetBlock`, override
+`make_endog_law_of_motion` with a death-modified policy lottery that moves a
+fraction `ζ` of the mass at every `(β, e, a)` to asset index 0 each period;
+discount the continuation by survival, `β → β(1−ζ)`; Blanchard–Yaari annuities
+(`return → (1+r)/(1−ζ)`, so aggregate wealth is conserved) as the default, with
+a no-annuity switch. Flows through both `steady_state` and `jacobian`. Newborns
+keep their `(β, e)` state — but since the cross-sectional `(β, e)` distribution
+is the stationary one at all times, newborns are ergodic draws, exactly as KMV.
+
+**Result — death does not generate hand-to-mouth behaviour in the one-asset
+model.** Homogeneous `β` + death + annuities, `β` calibrated to `A = 20`
+(`_death_homog.py`, `results/death_homog.json`):
+
+| chain | β | MPC (labor) | MPC (unweighted) | frac at `a = 0` |
+|---|---|---|---|---|
+| **baseline (their KMV chain)** | 0.993 | **0.026** | 0.043 | 0.008 |
+| USA | 0.991 | 0.024 | 0.051 | 0.012 |
+| FRA | 0.993 | 0.022 | 0.042 | 0.009 |
+| GER | 0.993 | 0.021 | 0.041 | 0.012 |
+
+MPC ≈ 0.02–0.03 for **every** chain, including the baseline KMV one (target
+0.20). With ARS's `β`-heterogeneity *plus* death the calibration still
+degenerates for USA (`dβ → 0`, MPC 0.02) and lands at MPC 0.05 for FRA with
+`β_hi` pinned at 1.
+
+**Why death works in KMV but not here.** KMV is **two-asset**. Death generates
+MPC there because newborns start at zero *illiquid* wealth and rationally stay
+there for years — adjusting illiquid holdings is costly — while holding liquid
+wealth and running a high MPC ("wealthy hand-to-mouth"). In a **one-asset**
+model there is no transaction cost pinning newborns at zero; a newborn with
+average earnings saves out of poverty within a few quarters, so the stock at
+zero wealth is ~1% and contributes almost nothing to the aggregate MPC.
+**ARS's `β`-heterogeneity is precisely the one-asset substitute for KMV's
+two-asset wealthy-hand-to-mouth mechanism** — a permanently-impatient type that
+stays at the constraint. Bolting death onto the one-asset model adds an
+ineffective mechanism, not a fix.
+
+**Consequence for the diagnosis.** The USA/FRA calibration failure (§S4) is
+*not* solved by the KMV death mechanism. The live options are:
+1. **USA** — a targeted `β₂` fix. USA's ergodic var 1.79 vs KMV's 1.07 comes
+   from `β₂ = 0.0066` combined with `σ₂ = 1.32`. Pin the ergodic variance of the
+   persistent component to KMV's (DECISIONS §8b `ErgodicVarConstraint`) → `β₂ ≈
+   0.0105`, ergodic var → ~1.2. Re-estimate USA (~50 min). FRA and GER need
+   nothing on this axis (already ≈ KMV's 1.07).
+2. **FRA** — its ergodic variance is fine; the S4 failure is process *shape*
+   (lower `λ₂` → persistent shocks rarer → fewer households recently hit by a
+   large drop → fewer near the constraint, so ARS's `β`-het can't reach MPC
+   0.20). Test in progress (`_betahet_sweep.py`): can a wider `β`-heterogeneity
+   (lower `β_lo`) hit MPC 0.20 while holding `A` and the SCF Lorenz? If yes, FRA
+   is a calibration-family question, not a chain problem.
+3. If neither USA nor FRA can be made to work in one-asset, that is the
+   argument for the **two-asset** model after all (contra §S3, which only
+   checked the *decomposition* reproduces — not whether *our chains* calibrate).
+
+**Files:** `death.py`, `_death_homog.py` / `results/death_homog.json`,
+`_calib_death.py` / `results/calib_death.json` (ζ=1/180 no-annuity multistart,
+also degenerate).
+
+---
+
 ## Open (step 2)
 
-- **Chain export scale for an infinite-horizon model (S4).** Ergodic-`var(log e)`
-  target instead of `match_var_log`; value = KMV's ≈ 0.85 (validation) or the
-  data cross-section. Supervisor question. Blocks everything downstream.
+- **The one-asset calibration with our chains (§S4–S5).** GER works. USA needs
+  a `β₂` re-estimation (pin ergodic var of the persistent component to KMV's).
+  FRA is under test (`β`-het width). If USA/FRA can't be made to calibrate in
+  one-asset, revisit two-asset. **Blocks everything downstream.** Supervisor
+  question — the KMV-death hypothesis was tested and does not fix one-asset.
+- ~~Chain export scale (rescale to 0.85)~~ — **withdrawn** (§S5 correction):
+  0.85 is the ARS process, not KMV's target (1.07); FRA/GER already match, only
+  USA is high and that is a `β₂` issue, not a rescale issue.
 - **Whether the aggregate 80/20 decomposition match is enough**, or the
   channel-level composition (labor / tax / capital-gains split) also has to line
   up with KMV — the latter needs changes to the non-household blocks (asset
