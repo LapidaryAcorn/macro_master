@@ -8,6 +8,35 @@ implies for the write-up.**
 
 ---
 
+## 0. Scope: the thesis target is Poland; USA/FRA/GER are method validation
+
+**Framing (set 2026-08-30).** The thesis studies **Poland only**. The USA, France
+and Germany results are not findings in their own right — they exist to
+**validate the pipeline**: evidence that it reproduces KMV on US data and behaves
+sensibly on other countries before it is applied to Polish data (which are not
+yet in hand). There is no cross-country comparison as a research question.
+
+**Sections written under the old (cross-country) framing** — their *decisions*
+stand, but their stated *rationale* leans on cross-country comparability and
+should be reworded once the Polish data arrive and the validation framing is
+final:
+
+- **§8** ("re-run all three countries", not just the two with a binding bound) —
+  justified by "consistency of method across countries". Under the new framing
+  the same action is justified more simply: all three validation runs should go
+  through the identical final pipeline.
+- **§11** (common 2001–2016 window) — entire rationale is cross-country
+  comparability. As a validation exercise the window choice matters much less;
+  keep it for tidiness or note it is immaterial.
+- **§12** (GRID-USA ≠ KMV's published US column; "validity standard is
+  consistency of method across countries") — the validity standard is now
+  "reproduces KMV's *mechanism* and moments on comparable US data", not
+  cross-country consistency. The sample-difference explanation is unchanged.
+
+Do not rewrite these yet — flagged here so the rewording is not forgotten.
+
+---
+
 ## 1. Simulation design: additive jumps, not resets
 
 **Decision.** Jumps add to the existing component (`z_j → z_j·e^{-β} + ε`),
@@ -744,6 +773,13 @@ stronger than leaving them to be discovered.
 
 ## 16. Step-2 interface notes (from reading the Auclert `annual-review` code)
 
+> Step 2 has its own running log: **`../hank_step2/STEP2_LOG.md`**. It records
+> the baseline reproduction (S1), the resolved frequency question (S2 —
+> quarterly, confirmed six ways), and the one-asset-vs-two-asset assessment (S3
+> — the one-asset model reproduces KMV's 20/80 direct–indirect split almost
+> exactly). The notes below are the pre-step-2 reading of the code and still
+> stand.
+
 Recorded 2026-08-30 from `household.py` in `shade-econ/annual-review`, so step 2
 starts from facts rather than assumptions. The relevant block is:
 
@@ -803,9 +839,12 @@ starts from facts rather than assumptions. The relevant block is:
 - ~~**If `β₁` again runs to its bound after widening to 8.0:** fix it and
   estimate the remaining five.~~ **Resolved** (§8): `β₁` settled interior at
   4.27 (FRA) / 5.34 (GER) / 2.75 (USA), objective sweeps confirm. No action.
-- **The `var Δ1y` / frequency gap** (§8d): decide, when wiring up step 2,
-  between discretizing component 1 as a near-iid quarterly shock, adding an iid
-  transitory shock inside the HANK model, or accepting the ~30% shortfall.
+- **The `var Δ1y` gap** (§8d): implement the fix (discretize component 1 as a
+  near-iid quarterly shock) at step S4. Frequency question is **settled** —
+  step-2 model is quarterly (STEP2_LOG §S2), our chain is quarterly, no `P⁴`.
+- **`beta` calibration convention for the step-2 comparison** (STEP2_LOG open
+  list): re-calibrate `beta` per chain, or hold it at the baseline value?
+  Re-calibration is the cleaner validation design. Supervisor question.
 - **GER `β₂` calibration** (§8b). (i) ~~stationary vs lifecycle~~ **settled**:
   the step-2 code is infinitely-lived / ergodic, so the restriction is needed.
   Still open: (ii) whether the ergodic-sd anchor should be Germany's own observed
@@ -831,9 +870,14 @@ starts from facts rather than assumptions. The relevant block is:
   protection), or should be reported without one.
 - **Chain size for step 2:** 75 states is the current default; may need to drop
   to 33 if the model solve is too slow.
-- **One-asset vs two-asset model in step 2:** starting from the one-asset
-  version of the Auclert et al. code; KMV themselves use two assets, which
-  matters for the MPC distribution and hence for the decomposition of direct vs
-  indirect effects.
+- **One-asset vs two-asset model in step 2:** ~~open~~ **largely resolved**
+  (STEP2_LOG §S3). The one-asset ARS model (β-heterogeneity) reproduces KMV's
+  headline 20/80 direct–indirect split for the monetary shock almost exactly
+  (19.7% direct / 80.3% indirect, first-year, vs KMV's 19/80). The *composition*
+  of the indirect effects differs (asset-return channel +22% vs KMV's −2%,
+  transfer channel smaller) but that is the non-household blocks, not one- vs
+  two-asset. Proceed one-asset. Two-asset only needed if the thesis wants the
+  cross-sectional MPC distribution (KMV Fig 5–6), the wealthy-HtM mechanism as
+  such, or the portfolio channel. Supervisor's call.
 - **Poland:** earnings targets (Polish panel data / EU-SILC) and wealth moments
   (NBP HFS / ECB HFCS) still pending.
