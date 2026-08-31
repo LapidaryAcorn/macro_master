@@ -1,0 +1,4 @@
+country,n_states,P_rows_sum_1,mean_earnings,expm_Q_equals_P,ergodic_var_log_e
+USA,75,True,1.0,True,1.1906832518059902
+FRA,75,True,1.0000000000000002,True,1.0403347796821534
+GER,75,True,1.0000000000000002,True,1.0443961788958667
