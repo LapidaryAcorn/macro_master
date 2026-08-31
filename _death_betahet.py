@@ -5,7 +5,7 @@ multistart. Baseline chain + FRA + GER (USA is being re-estimated separately wit
 a pinned beta2, so its free-beta2 chain is moot)."""
 import os, sys, json, time, numpy as np
 from scipy import optimize, linalg
-AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "annual-review"))
+AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "annual-review"))
 os.chdir(AR); sys.path.insert(0, AR); sys.path.insert(0, os.path.dirname(__file__))
 import sequence_jacobian as sj
 import household

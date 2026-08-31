@@ -2,7 +2,7 @@
 UNRESCALED chains? Re-run the (A=20, MPC=0.20, SCF Lorenz) solve with hh_ha_death."""
 import os, sys, json, time, numpy as np
 from scipy import optimize, linalg
-AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "annual-review"))
+AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "annual-review"))
 os.chdir(AR); sys.path.insert(0, AR); sys.path.insert(0, os.path.dirname(__file__))
 import sequence_jacobian as sj
 import household

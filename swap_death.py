@@ -17,7 +17,7 @@ import numpy as np
 from scipy import optimize, linalg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AR = os.path.normpath(os.path.join(HERE, "..", "annual-review"))
+AR = os.path.normpath(os.path.join(HERE, "..", "..", "annual-review"))
 os.chdir(AR); sys.path.insert(0, AR); sys.path.insert(0, HERE)
 
 import sequence_jacobian as sj
@@ -52,7 +52,7 @@ model_ha = sj.combine(common_blocks + [hh])
 
 
 def load_chain(cc):
-    d = os.path.normpath(os.path.join(HERE, "..", "kmv_grid_step1", "output", cc))
+    d = os.path.normpath(os.path.join(HERE, "..", "output", cc))
     Q = np.loadtxt(f"{d}/income_process_Q.txt"); z = np.loadtxt(f"{d}/income_process_zgrid.txt")
     P = linalg.expm(Q); P /= P.sum(1)[:, None]
     assert np.allclose(P.sum(1), 1) and (P >= -1e-12).all()

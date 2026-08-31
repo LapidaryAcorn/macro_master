@@ -2,7 +2,7 @@
 MPC 0.20 near A=20?  Point evaluations, no full calibration, no death."""
 import os, sys, json, numpy as np
 from scipy import linalg, optimize
-AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "annual-review"))
+AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "annual-review"))
 os.chdir(AR); sys.path.insert(0, AR); sys.path.insert(0, os.path.dirname(__file__))
 import sequence_jacobian as sj
 import household

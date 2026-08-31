@@ -21,8 +21,8 @@ from scipy import optimize, linalg
 COUNTRY = (sys.argv[1] if len(sys.argv) > 1 else "USA").lower()
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AR = os.path.normpath(os.path.join(HERE, "..", "annual-review"))
-CHAINDIR = os.path.normpath(os.path.join(HERE, "..", "kmv_grid_step1", "output", COUNTRY))
+AR = os.path.normpath(os.path.join(HERE, "..", "..", "annual-review"))
+CHAINDIR = os.path.normpath(os.path.join(HERE, "..", "output", COUNTRY))
 os.chdir(AR)
 sys.path.insert(0, AR)
 

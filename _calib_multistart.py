@@ -2,7 +2,7 @@
 Multi-start the (beta_hi, dbeta, omega) -> (A=20, MPC=0.20, SCF Lorenz) solve."""
 import os, sys, json, numpy as np
 from scipy import optimize, linalg
-AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "annual-review"))
+AR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "annual-review"))
 os.chdir(AR); sys.path.insert(0, AR)
 import sequence_jacobian as sj
 import household

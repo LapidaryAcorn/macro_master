@@ -20,7 +20,7 @@ import os, sys, json, time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AR = os.path.normpath(os.path.join(HERE, "..", "annual-review"))
+AR = os.path.normpath(os.path.join(HERE, "..", "..", "annual-review"))
 os.chdir(AR)
 sys.path.insert(0, AR)
 

@@ -1,6 +1,6 @@
 import os, sys, json, numpy as np
 from scipy import optimize, linalg
-AR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "annual-review"))
+AR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "annual-review"))
 os.chdir(AR); sys.path.insert(0, AR); sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sequence_jacobian as sj
 import household
