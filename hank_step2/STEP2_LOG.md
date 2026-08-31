@@ -1,6 +1,6 @@
 # Step 2 log — plugging the estimated chain into a one-asset HANK
 
-Companion to `../kmv_grid_step1/DECISIONS.md` (see its §16 for the interface
+Companion to `../DECISIONS.md` (see its §16 for the interface
 notes this builds on). Same format: **what → why → how verified → implication.**
 
 Scope reminder (DECISIONS.md §0): the thesis target is **Poland**. USA/FRA/GER
@@ -10,7 +10,7 @@ data before it is applied to Poland.
 The step-2 model is **Auclert–Rognlie–Straub (2025, *Annual Review of
 Economics*)**, `shade-econ/annual-review` — a compact one-asset HANK with
 discount-factor heterogeneity, built on the sequence-space Jacobian toolkit.
-Cloned to `../annual-review`.
+Cloned to `../../annual-review` (sibling of `kmv_grid_step1/`).
 
 ---
 
@@ -117,7 +117,7 @@ portfolio channel.** Supervisor's call.
 ## S4. Swapping in our chain — the raw chains do not drop into an infinite-horizon model
 
 **What was done.** `swap_chain.py <COUNTRY>` replaces the ARS income process with
-`../kmv_grid_step1/output/<cc>/income_process_Q.txt` (the generator, so their
+`../output/<cc>/income_process_Q.txt` (the generator, so their
 `expm(...)` call reconstructs our `P` — verified rows sum to 1, entries ≥ 0),
 re-calibrates `(beta_hi, dbeta, omega)` to the **same** ARS targets (A = 20,
 impact labor MPC = 0.20, SCF Lorenz curve) — the agreed "re-calibrate per chain"

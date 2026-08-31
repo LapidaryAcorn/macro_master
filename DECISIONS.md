@@ -796,7 +796,7 @@ stronger than leaving them to be discovered.
 
 ## 16. Step-2 interface notes (from reading the Auclert `annual-review` code)
 
-> Step 2 has its own running log: **`../hank_step2/STEP2_LOG.md`**. So far:
+> Step 2 has its own running log: **`hank_step2/STEP2_LOG.md`**. So far:
 > S1 baseline reproduced & verified; S2 frequency = quarterly (six ways); S3
 > one-asset reproduces KMV's 20/80 split (composition differs — see below);
 > **S4** the raw exported chains do not calibrate one-asset for USA/FRA

@@ -1,28 +1,69 @@
-# KMV (2018) earnings process — estimation on GRID data
+# KMV (2018) HANK — earnings-process estimation + one-asset HANK
 
-Step 1 of a master's thesis applying the Kaplan–Moll–Violante (2018, AER) HANK
-framework cross-country. This repository estimates the KMV two-component
-jump-drift earnings process on harmonized GRID data and exports a finite-state
-Markov chain for the HANK / sequence-space model (step 2).
+Master's thesis (University of Warsaw) applying the Kaplan–Moll–Violante
+(2018, AER) HANK framework to **Poland** (target), with the USA, France and
+Germany as **method validation**. Two steps, both in this repo:
 
-Pipeline: **GRID statistics → 8 target moments → SMM estimation → Table-2-style
-fit table + exported quarterly Markov chain.**
+- **Step 1** (top level) — estimate the KMV two-component jump-drift earnings
+  process on harmonized GRID data; export a finite-state quarterly Markov chain.
+  Pipeline: *GRID statistics → 8 target moments → SMM estimation → Table-2-style
+  fit table + exported chain.*
+- **Step 2** (`hank_step2/`) — plug the chain into the Auclert–Rognlie–Straub
+  one-asset HANK (`shade-econ/annual-review`), re-calibrate, and reproduce KMV's
+  direct-vs-indirect monetary decomposition. See `hank_step2/STEP2_LOG.md`.
+
+Every modelling decision and its justification is logged in **`DECISIONS.md`**
+(step 1) and **`hank_step2/STEP2_LOG.md`** (step 2). Read those before changing
+anything.
 
 ---
 
 ## Layout
 
+**Step 1**
+
 | Path | What it does |
 |---|---|
 | `kmv_earnings/simulate.py` | The income process itself + the 8 moments |
-| `kmv_earnings/estimate.py` | SMM objective + differential evolution (+ Nelder-Mead polish) |
+| `kmv_earnings/estimate.py` | SMM objective, differential evolution + bounded NM polish; `ErgodicVarConstraint` for pinning a weakly-identified `β₂` |
 | `kmv_earnings/tiktak.py` | TikTak global optimiser (Arnoud–Guvenen–Kleineberg) |
-| `kmv_earnings/discretize.py` | Markov-chain discretization, diagnostics, txt export |
+| `kmv_earnings/discretize.py` | Markov-chain discretization, diagnostics, txt export (`income_process_{grid,zgrid,P,Q,pi}.txt`) |
 | `kmv_earnings/grid_loader.py` | Builds the 8 targets from GRID `Stats_*.csv` |
 | `kmv_earnings/run.py` | CLI (`validate` / `estimate` / `table`) |
+| `scripts/close_step1.py` | Full-budget DE+TikTak per country, OOS scoring, agreement/bounds/fit report, regenerates tables + chains |
+| `scripts/tiktak_recheck.py` | TikTak with warm start + larger Sobol budget (§9 identification cross-check) |
 | `KMV_step1_test.ipynb` | Step-by-step notebook covering the whole pipeline |
 | `data/` | GRID export |
-| `targets/` | Target-moment JSONs per country |
+| `targets/` | Target-moment JSONs per country (common window 2001–2016) |
+| `output/<country>/` | Per-country estimates + exported chain + fit table. `output/usa/` is the `β₂`-pinned canonical; `output/usa_free_beta2/` keeps the unrestricted estimate |
+| `DECISIONS.md` | Modelling-decision log (§0 = Poland-only framing) |
+
+**Step 2** — `hank_step2/`
+
+| Path | What it does |
+|---|---|
+| `hank_step2/ge_blocks.py` | GE (non-household) blocks, verbatim from ARS `Annual Review main.ipynb` |
+| `hank_step2/death.py` | Adds KMV stochastic death (Blanchard–Yaari perpetual youth) to the ARS one-asset household block |
+| `hank_step2/baseline.py` | Reproduces the ARS one-asset baseline unchanged; writes `results/baseline.json` |
+| `hank_step2/swap_chain.py` | Swap our chain in (no death) — the S4 analysis |
+| `hank_step2/swap_death.py` | Swap our chain in **with death** + joint `(β_hi, dβ, ω)` re-calibration — the S5 analysis (current) |
+| `hank_step2/_*.py` | One-off diagnostics referenced in `STEP2_LOG.md` (e.g. `_decomp_jac_check.py` is the death-Jacobian regression test) |
+| `hank_step2/results/` | JSON + logs for every run |
+| `hank_step2/STEP2_LOG.md` | Step-2 decision/finding log |
+
+### External dependency (step 2)
+
+`hank_step2/` needs the Auclert–Rognlie–Straub replication repo cloned **next to
+this repository** (i.e. as a sibling of `kmv_grid_step1/`):
+
+```bash
+cd ..                 # parent of kmv_grid_step1/
+git clone https://github.com/shade-econ/annual-review.git
+pip install "git+https://github.com/shade-econ/sequence-jacobian.git"
+```
+
+The step-2 scripts `chdir` into `../../annual-review` and read the chain from
+`../output/<country>/`.
 
 ## Quick start
 
@@ -252,28 +293,30 @@ For thesis numbers use the full defaults (not `--quick`), `maxiter >= 100` or
 
 ---
 
-## Status and next steps
+## Status
 
-**Done.** Validated simulator; verified GRID loader; targets for USA/FRA/GER;
-SMM estimation with two global optimisers; corrected discretization; Table-2
-output and Markov-chain export; test notebook.
+**Step 1 — done.** Common-window (2001–2016) targets for USA/FRA/GER; full-budget
+SMM with DE + TikTak and the identification cross-checks; corrected
+discretization; chains exported (`P` **and** the generator `Q`, for loaders that
+exponentiate internally). GER and USA have `β₂` pinned to KMV's ergodic variance
+(weakly identified by the panel — see `DECISIONS.md` §8b).
 
-**Next.**
-1. Full-budget estimations for FRA and GER, with the DE-vs-TikTak agreement
-   check for each country.
-2. Regenerate the exported chains — the files currently in `output/` were built
-   with the old 33-state default and predate the discretization fix.
-3. Decide and document the year window.
-4. **Step 2**: `shade-econ/annual-review` (Auclert et al. sequence-space
-   Jacobian). Start from the one-asset model and replace the Rouwenhorst
-   discretization of a lognormal AR(1) with loading `income_process_*.txt`.
-   Watch: mean-1 normalisation (already handled), frequency (their model is
-   quarterly, as is the chain — an annual variant would need `P^4`), and that
-   75 states instead of the usual 7–11 will slow the solve. Sanity path:
-   reproduce their steady state with the original process, swap in the chain,
-   compare the wealth distribution and MPCs, then run the monetary IRFs.
-5. Poland: earnings targets from Polish panel data / EU-SILC, wealth moments
-   from NBP HFS / ECB HFCS.
+**Step 2 — in progress** (`hank_step2/STEP2_LOG.md`).
+- S1–S3: ARS one-asset baseline reproduced; frequency = quarterly; the one-asset
+  model reproduces KMV's ~20/80 direct-vs-indirect split.
+- S4–S5: the raw chains do not calibrate one-asset on their own, but **ARS
+  β-heterogeneity + KMV stochastic death** makes **FRA and GER** calibrate
+  cleanly (MPC 0.20, decomposition ≈ 25/75 — "indirect dominates" reproduced).
+  **USA does not calibrate** — the GRID-USA sample's earnings *shape* (thin tail,
+  persistent transitory component) departs from KMV's; the US validation runs on
+  KMV's own chain (the S1 baseline), with GRID-USA reported as a sensitivity.
+- Open (supervisor): whether to build the **two-asset** model — needed only if
+  the Polish estimated chain turns out GRID-USA-shaped (`kurt Δ1y` ≲ 15 and/or
+  `β₁` ≲ 3). Costed at ≈ 2 weeks (`STEP2_LOG.md` §S6).
+
+**Next.** Poland — earnings targets from Polish panel data / EU-SILC, wealth
+moments from NBP HFS / ECB HFCS; then run `hank_step2/swap_death.py` on the
+Polish chain and decide one-asset vs two-asset.
 
 ## References
 
