@@ -33,7 +33,7 @@ for ax, cc in zip(axes, ["FRA", "GER"]):
     ax.set_xlabel("a  (0 = TikTak point, 1 = DE/canonical, >1 = extended beyond DE)")
     ax.set_ylabel("objective f (log scale)")
     ax.set_title(f"{cc}: line scan, TikTak to DE and beyond")
-    ax.legend(fontsize=8, loc="lower center")
+    ax.legend(fontsize=8, loc="upper left")
 
 fig.suptitle("The canonical (DE) estimate is the valley floor, not a point\n"
              "on a still-descending slope (DECISIONS.md Sec 9)")

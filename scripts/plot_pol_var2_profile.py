@@ -64,7 +64,11 @@ ger_path = "output/ger_var2_profile_summary.json"
 if os.path.exists(ger_path):
     ger_summary = json.load(open(ger_path))
     ger_free_var2 = ger_summary["free_var2"]
-    ger_pts = [(ger_free_var2, 0.00220, "GER canonical (free)")]  # Sec 21
+    # OOS f for GER's free estimate, computed with the SAME methodology as
+    # every profile point (n_workers=100_000, seed=987654) -- corrected
+    # 2026-10-12, was previously a different (real-data, different panel)
+    # evaluation at 0.00220; the consistent number is 0.00252.
+    ger_pts = [(ger_free_var2, 0.0025192182680727334, "GER canonical (free)")]
     for v, r in ger_summary["profiles"].items():
         ger_pts.append((float(v), r["oos_f"], None))
     ger_pts.sort()

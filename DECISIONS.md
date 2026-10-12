@@ -1800,20 +1800,73 @@ estimate sits at `var2 = 7.24`, far to the right of this grid). Result:
 
 **Monotonically decreasing across the entire tested range, with no interior
 minimum anywhere in `[0.3, 2.5]`** — a qualitatively different shape from
-Poland's clean V with a well-defined floor at `0.509` (§23a). The objective
-simply keeps improving as `var2` rises toward GER's own free-estimate value
-of `7.24`, exactly the signature of a weakly identified parameter: there is
-no point in this range where pushing `var2` higher starts to cost fit, so
-nothing in the profile itself pins down where `var2` "should" be — only the
-calibration-based argument for anchoring it at KMV's `0.9103` (§8b) does
-that work. `var2=0.91` reproduces the canonical GER pipeline's own OOS fit
-(`f ≈ 0.035`, STEP2_LOG/§8b) almost exactly despite warm-starting from the
-free estimate rather than KMV Table 3 — a useful independent cross-check
-that this profile script's methodology matches the main pipeline's.
+Poland's clean V with a well-defined floor at `0.509` (§23a). `var2=0.91`
+reproduces the canonical GER pipeline's own OOS fit (`f ≈ 0.035`,
+STEP2_LOG/§8b) almost exactly despite warm-starting from the free estimate
+rather than KMV Table 3 — a useful independent cross-check that this profile
+script's methodology matches the main pipeline's.
+
+**Correction (2026-10-12): "no interior minimum" does not mean the curve is
+flat or that the data are indifferent to `var2` — it is not, and they are
+not.** The original wording here overstated the parallel with a genuinely
+flat objective. Properly stated: **the data clearly reject low `var2`, and
+clearly want it high — they just never say "high enough, stop."**
+Quantified: pinning at KMV's own anchor (`var2=0.91`, the value actually
+used for GER's canonical estimate) costs **14.0× in OOS fit** relative to
+the free estimate evaluated on the identical panel (`f=0.0354` vs
+`f=0.00252`, consistently computed — the free-estimate number used for this
+ratio was itself corrected during this check, from an earlier
+inconsistent-methodology evaluation of `0.0022`), and misses `var_log_earns`
+by **−14.7%**. That is a real, substantial, single-moment-concentrated cost,
+not a rounding error. The data's preference keeps strengthening without
+leveling off all the way to the top of the tested grid (`var2=2.5`,
+`f=0.0038`, still 1.5× worse than free estimation) — i.e. **the data require
+`var2 ≳ 2.5`** to get anywhere near the best attainable fit, and the true
+optimum (the free estimate, `var2=7.24`) sits further out still. What is
+genuinely unidentified is only the **upper bound**: nothing in the data
+rules out `var2` continuing to rise indefinitely as `β₂ → 0`, because the
+objective keeps improving in that direction with no sign of turning around.
+A lower bound is well pinned; a ceiling is not.
+
+**Consequence: pinning `var2` at `0.9103` is a genuine modelling decision
+that trades away real fit for a believable long-run dispersion (§8b's
+calibration argument), not a value the SMM objective is indifferent to or
+that the data themselves suggest.** This should be stated plainly wherever
+the GER pin is defended — "the data don't care" and "we chose plausibility
+over an unidentified free parameter" are different claims, and only the
+second is accurate here.
+
+**A hypothesis for why the data push `var2` ever higher, worth investigating
+rather than asserting: a genuine trend in German earnings inequality over
+2001–2010, not (or not only) a stochastic near-random-walk component.**
+Checked directly: GER's raw `var(log annual earnings)` rises sharply and
+almost monotonically from `0.559` (2001) to `0.666` (2010) — a 19% increase
+over nine years — then flattens almost completely, `0.666` (2010) to
+`0.674` (2016) (`output/pl_diagnostics/year_panel_ger.csv`). A stationary
+jump-drift process has no way to represent a one-time, within-sample *rise*
+in cross-sectional dispersion other than by inflating the persistent
+component's ergodic variance — the stationary model's only lever for
+"dispersion keeps growing" is a component that barely mean-reverts, i.e.
+exactly the `β₂ → 0` pull this profile documents. If the true German data
+generating process is non-stationary over this window (plausibly linked to
+the well-documented rise in German wage inequality through the 2000s —
+labour-market reforms, declining collective-bargaining coverage, and
+low-wage-sector growth are the usual candidates in that literature, though
+not verified here) rather than a stationary near-permanent shock, this would
+be a textbook trend-mistaken-for-a-unit-root confound: the model absorbs a
+deterministic or slow-moving trend by pushing a stochastic component toward
+non-stationarity instead. **Not established here — a hypothesis for the
+supervisor conversation and, if pursued, a candidate explanation for why
+`β₂` resists identification specifically for Germany and not the other three
+countries**, none of which show a comparably sharp early-sample level trend
+(Poland's own `var_log` in fact *declines* over its sample, §18's diagnostics
+addendum).
 
 The combined PL-vs-GER picture (`output/pl_diagnostics/11_var2_profile.png`)
-makes the identification-strength contrast visible at a glance: Poland's
-curve has a floor; Germany's does not, in the range plotted.
+still makes the identification-strength contrast visible at a glance —
+Poland's curve has a floor in the range that matters; Germany's keeps
+falling — but the picture is "a real, one-sided pull with no ceiling," not
+"indifference."
 
 ---
 
