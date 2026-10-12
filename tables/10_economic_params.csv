@@ -1,0 +1,10 @@
+quantity,USA,FRA,GER,POL
+Transitory half-life (years),0.0591,0.0406,0.0325,0.0609
+Persistent half-life (years),12.7344,33.6263,26.4209,10.2525
+Mean time between transitory shocks (years),1.155,1.3062,1.582,1.5402
+Mean time between persistent shocks (years),23.5753,35.4663,24.4302,28.4927
+sigma (transitory),1.9407,1.91,1.7915,1.9789
+sigma (persistent),1.5285,1.0922,1.0802,1.401
+"Ergodic sd, transitory component",0.3728,0.2861,0.2179,0.3342
+"Ergodic sd, persistent component",0.9541,0.9033,0.9541,0.7138
+"Ergodic sd, combined (log earnings)",1.0244,0.9475,0.9787,0.7881
