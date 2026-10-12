@@ -1730,29 +1730,37 @@ normalized away.
 ### 23a. The OOS-f-vs-var2 plot, and which points are noise-indistinguishable
 
 `scripts/plot_pol_var2_profile.py`, `output/pl_diagnostics/11_var2_profile.png`.
-Plots OOS `f` (log scale) against `var2` for all 5 points — the 4 pinned
-profile points plus the canonical free estimate — and marks a
-noise-indistinguishability threshold at **+20% of the best pinned point's
-`f`**, per §9's direct measurement that Monte Carlo noise at this objective
-scale runs ~23% of the mean.
+Plots OOS `f` (log scale) against `var2` for the 4 pinned profile points
+plus the canonical free estimate, and marks a noise-indistinguishability
+threshold at **+20% of the minimum `f`**, per §9's direct measurement that
+Monte Carlo noise at this objective scale runs ~23% of the mean.
 
-**The canonical free estimate is not noise-close to anything pinned.** Its
-`f = 0.0037` sits roughly 5.4x below the best pinned point (`var2=0.70`,
-`f=0.0200`) — far outside any plausible noise band. Free estimation finds a
-genuinely better fit than forcing `var2` to any single tested value,
-confirming §22's point that `β₂`'s weak discipline in the *fit* sense does
-not mean the data are indifferent to `var2` once a specific value is
-imposed.
+**Correction (2026-10-12): the threshold must be measured from the true
+minimum — the canonical free estimate (`f=0.0037`) — not from the best
+*pinned* point (`var2=0.70`, `f=0.0200`).** The first version of this plot
+used the latter, which is the wrong reference: the pinned grid are
+constrained re-estimates of a *different* (5-parameter) problem, and
+comparing them only to each other cannot say anything about distance from
+the actual optimum. With the correct threshold
+(`1.20 × 0.0037 = 0.0044`), **none of the four tested pinned values falls
+within noise of the true minimum** — every one of them, including the
+"best" pinned point at `var2=0.70`, is a real, non-noise degradation
+relative to free estimation. A dedicated **control point**, pinning `var2`
+at exactly the canonical's own value (`0.5094`) and re-running the full
+profile pipeline, is the direct test of whether the pin itself (as opposed
+to pinning it at the *wrong* value) costs anything — it should reproduce
+the canonical free estimate closely if the constraint is genuinely
+non-binding there; pending at time of writing, to be added to the plot once
+computed.
 
-**Among the pinned points, `var2=0.40` and `var2=0.70` are noise-
-indistinguishable from each other; `var2=0.30` and `var2=0.9103` are not.**
-Threshold = `1.20 × 0.0200 = 0.0240`. `var2=0.40` (`f=0.0203`) and
-`var2=0.70` (`f=0.0200`, the best pinned point) both sit under it — a
-roughly `[0.4, 0.7]` band, bracketing the canonical `0.509`, inside which
-the pinned objective cannot distinguish one value from another. `var2=0.30`
-(`f=0.0753`, 3.8x the threshold) and `var2=0.9103` (`f=0.0310`, 1.3x the
-threshold) are both clearly outside it — real degradation, not noise, on
-both sides.
+**Among the pinned points, `var2=0.40` and `var2=0.70` remain
+noise-indistinguishable *from each other*** (`0.0203` vs `0.0200`, well
+within the ~23% noise band) — a real, narrower claim than the one above:
+the data cannot tell these two *pinned* values apart from one another, but
+both are nonetheless clearly worse than letting `var2` float freely.
+`var2=0.30` and `var2=0.9103` are not close to either the `[0.4,0.7]`
+pinned pair or the true minimum — real degradation on both sides, not
+noise, under either reference point.
 
 **Which moment breaks on each side — confirmed cleanly, and consistently on
 both sides of the band, not just at the extremes.** `var2=0.30`'s worst
