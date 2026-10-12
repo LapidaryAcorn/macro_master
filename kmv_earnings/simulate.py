@@ -69,12 +69,21 @@ def simulate_log_annual_earnings(
     lifecycle: bool = True,
     burn_in_years: int = 0,
     seed: int = 1234,
+    deterministic_arrival: bool = False,
 ) -> np.ndarray:
     """
     Return log annual earnings, shape (n_workers, n_years_keep).
 
     Fixed seed + fixed RNG-call structure => common random numbers across
     parameter values (the SMM objective is smooth-ish and deterministic).
+
+    `deterministic_arrival`: KMV's own footnote nests a discrete-time AR(1) in
+    logs as the limit of their jump-drift process where shocks arrive every
+    period with probability 1 (lambda -> infinity) rather than at a Poisson
+    rate -- i.e. z_j(t+dt) = z_j(t) e^{-beta dt} + eps every sub-step, no
+    Bernoulli draw. Setting this True reproduces that nested special case
+    (Task 2, DECISIONS.md 2026-10-11); lambda_j is then irrelevant for
+    component j and should be fixed to an arbitrary placeholder.
     """
     lam = np.array([params["lambda1"], params["lambda2"]]) / steps_per_quarter
     beta = np.array([params["beta1"], params["beta2"]]) / steps_per_quarter
@@ -82,7 +91,7 @@ def simulate_log_annual_earnings(
 
     rng = np.random.default_rng(seed)
     decay = np.exp(-beta)
-    p_jump = 1.0 - np.exp(-lam)
+    p_jump = np.ones(2) if deterministic_arrival else 1.0 - np.exp(-lam)
 
     z = np.zeros((n_workers, 2))
     if not lifecycle:

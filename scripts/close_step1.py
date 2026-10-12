@@ -46,6 +46,7 @@ COUNTRIES = {
     "USA": "targets/usa_grid.json",
     "FRA": "targets/fra_grid.json",
     "GER": "targets/ger_grid.json",
+    "POL": "targets/pol_grid.json",
 }
 PERSISTENT = ("lambda2", "beta2", "sigma2")
 
@@ -66,6 +67,16 @@ COUNTRY_DERIVE = {
     "USA": dict(_PIN_BETA2),
 }
 COUNTRY_FIXED: dict[str, dict] = {}
+
+# Year window used for each country's targets, for the table caption only
+# (estimation itself only sees the targets dict). USA/FRA/GER share the
+# common 2001-2016 window (DECISIONS §11); Poland uses its own full
+# 2000-2020 GRID window (DECISIONS §0, Task 1, 2026-10-11) -- see the §0
+# open item on whether a window-matched Polish re-estimate is also wanted.
+COUNTRY_WINDOW = {
+    "USA": "2001-2016", "FRA": "2001-2016", "GER": "2001-2016",
+    "POL": "2000-2020",
+}
 
 
 def rel_objective(m: dict, targets: dict) -> float:
@@ -219,7 +230,8 @@ def run_country(cc: str, targets_path: str, outdir: str, args) -> dict:
     df.to_csv(os.path.join(outdir, "table2.csv"), index=False)
     with open(os.path.join(outdir, "table2.tex"), "w") as f:
         f.write(df.to_latex(index=False, float_format="%.3f",
-                            caption=f"Earnings Process Estimation Fit ({cc}, GRID 2001-2016)",
+                            caption=f"Earnings Process Estimation Fit "
+                                    f"({cc}, GRID {COUNTRY_WINDOW.get(cc, '?')})",
                             label=f"tab:earnings_fit_{cc.lower()}"))
     export_chain(disc, outdir)
     diag = diagnose(p_best, disc)
@@ -298,7 +310,14 @@ def main():
         print(f"   free param at a bound: "
               f"{'YES -> widen bounds' if r['any_at_bound'] else 'no'}")
         print(f"   canonical params: {fmt_params(r['params_canonical'])}")
-    with open(os.path.join(args.outroot, "close_step1_summary.json"), "w") as f:
+    summary_path = os.path.join(args.outroot, "close_step1_summary.json")
+    if os.path.exists(summary_path):
+        # merge, don't overwrite -- a partial --countries run (e.g. one
+        # country re-estimated alone) must not silently drop the others.
+        existing = json.load(open(summary_path))
+        existing.update(summary)
+        summary = existing
+    with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2, default=float)
     print(f"\ntotal wall time: {time.time()-t_all:.0f}s")
 

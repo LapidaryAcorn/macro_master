@@ -123,6 +123,7 @@ def estimate(
     x0: dict | None = None,
     fixed: dict | None = None,
     derive: dict | None = None,
+    nm_maxiter: int = 400,
 ):
     """
     Run global SMM estimation. Returns (params_hat, result_object).
@@ -132,6 +133,9 @@ def estimate(
     `x0`: optional dict of starting parameters injected into the initial
     population (e.g. the KMV US estimates as a warm start for FR/DE).
     `fixed` / `derive`: hold or compute parameters, shrinking the search vector.
+    `nm_maxiter`: iteration budget for the Nelder-Mead polish step (default
+    400; shrink for cheap repeated re-estimation, e.g. bootstrap reps, where a
+    warm start already sits close to the optimum).
     """
     bounds = bounds or DEFAULT_BOUNDS
     fixed = fixed or {}
@@ -161,7 +165,7 @@ def estimate(
     x_best = res.x
     if polish_nm:
         nm = minimize(obj, x_best, method="Nelder-Mead", bounds=log_bounds,
-                      options={"xatol": 1e-4, "fatol": 1e-8, "maxiter": 400})
+                      options={"xatol": 1e-4, "fatol": 1e-8, "maxiter": nm_maxiter})
         if nm.fun < res.fun:
             x_best = nm.x
 

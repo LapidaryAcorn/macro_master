@@ -8,7 +8,84 @@ implies for the write-up.**
 
 ---
 
-## 0. Scope: the thesis target is Poland; USA/FRA/GER are method validation
+## 0. Goal (revised 2026-10-11): process *shape*, not Poland's decomposition alone
+
+**Framing.** Supersedes §0a below. The thesis no longer asks "what does the
+Poland decomposition look like" with USA/FRA/GER as method validation. It asks:
+**how does the shape of the income process affect HANK outcomes, holding
+everything else fixed?** At a common, shared set of calibration targets (the
+same `A = 20`, SCF Lorenz curve, aggregate-MPC target used for USA/FRA/GER in
+step 2), swap in the Polish estimated process and a reference process (US, or
+whichever validates cleanly) into the *same* model and calibration procedure,
+and compare MPC, the hand-to-mouth share, and monetary/fiscal transmission
+across the two. **The object of interest is the difference the process shape
+induces, not Poland's level in isolation.**
+
+**Why this sidesteps the missing-Polish-target problem.** The open item at the
+bottom of the old decisions list ("Poland's wealth moments are not in hand")
+was a blocker *only* if the plan was to calibrate Poland's own `beta` to
+Poland-specific wealth data. Under the comparison framing, every process is
+run through the *same* calibration targets — only the income process differs
+between runs — so no Poland-specific calibration target is needed for the
+headline result. (A Polish-specific calibration remains a natural *robustness*
+check, not a precondition.)
+
+**Relation to work already done.** STEP2_LOG §S4–S5 (the chain swaps: USA/FRA/
+GER processes dropped into the ARS one-asset model, re-calibrated to the same
+targets, MPC/wealth/IRFs compared) is *already* a pilot run of this exact
+exercise — it was framed there as "validation", but it is structurally
+identical to the comparison the thesis now makes central. Worth stating
+explicitly in the write-up: the comparison was rehearsed once, before Poland
+existed, and Poland is now a third point on the same exercise.
+
+**Sections whose stated rationale leaned on the superseded framing (§0a) and
+should be reworded, or at least reread with this in mind, before the final
+write-up:**
+- **§0a** itself — superseded; kept below for the record, not deleted, because
+  the sub-flags it raises on §8/§11/§12 are still partly live.
+- **§8** ("re-run all three countries for consistency of method") — the same
+  action is now justified *more* strongly: an identical pipeline across
+  countries is a precondition for attributing HANK differences to process
+  *shape* rather than to pipeline inconsistency.
+- **§11** (common 2001–2016 window) — under a shape comparison a common window
+  arguably matters *more*, not less (a confound: differences in the macro
+  period each country's process was estimated over could themselves drive HANK
+  differences, confounding "shape"). **Tension, recorded, not resolved:** Task 1
+  (2026-10-11) uses Poland's full 2000–2020 GRID window rather than restricting
+  to 2001–2016, because (i) the point of Task 1 is Poland's own best estimate,
+  not a window-matched one, and (ii) the common-window machinery was built for
+  a different purpose (cross-country *validation* comparability). If the
+  supervisor wants the shape comparison itself to be window-matched, re-estimate
+  Poland (and possibly USA/FRA/GER) on the shared window as a robustness check —
+  flagged in the open-decisions list, not done by default.
+- **§12** (GRID-USA ≠ KMV's published column) — reread "validity standard is
+  consistency of method" as "the US estimate now *feeds* the comparison,
+  it does not merely validate the pipeline in isolation"; the substantive
+  finding (GRID-USA's shape fails to support the KMV mechanism at all, §S4–S5)
+  becomes a *result*, not a caveat on a validation exercise.
+- Anywhere the phrase "Poland is the thesis target, USA/FRA/GER validate the
+  method" appears (in this file or STEP2_LOG.md), read it as "each country's
+  estimated process is one point in a comparison whose point *is* the
+  comparison" — including Poland.
+
+**New open item this creates.** For the comparison to isolate *shape* rather
+than *scale*, the countries being compared should probably sit at a common
+ergodic dispersion (as §8b's `ErgodicVarConstraint` already does for GER, and
+as USA now also uses) — otherwise "Poland has a different MPC" could be a
+dispersion-scale artifact, not a shape one. Whether to apply the same
+ergodic-variance pin to Poland by default, or to run both a free and a pinned
+Polish estimate and compare, is a supervisor question; raised again under Task
+1 below once the Polish estimate is in hand.
+
+**For the write-up.** Open the thesis with this framing, not the
+Poland-decomposition one. State plainly that the design routes around the
+missing-Polish-wealth-target problem by comparing *within* a shared
+calibration, rather than calibrating Poland in isolation against data that do
+not exist yet.
+
+---
+
+## 0a. [SUPERSEDED 2026-10-11 — see §0] Scope: the thesis target is Poland; USA/FRA/GER are method validation
 
 **Framing (set 2026-08-30).** The thesis studies **Poland only**. The USA, France
 and Germany results are not findings in their own right — they exist to
@@ -341,6 +418,11 @@ panel cannot identify, and which drives the implied long-run distribution to
 implausible values, so `β₂` is calibrated rather than estimated.* Report the fit
 cost and the anchoring choice explicitly.
 
+**Direct confirmation added 2026-10-12:** §21 shows `β₂` cannot be recovered
+even from noise-free synthetic data generated from a known truth, with the
+full estimation budget and a neutral start. That is the strongest available
+evidence for calibrating rather than estimating it here.
+
 ---
 
 ## 8c. Chain export: simulation-based scale calibration (`match_var_log=True`)
@@ -619,6 +701,21 @@ moments *could* identify a genuinely different economic configuration (as
 opposed to whether the optimiser finds the best one) is unchanged and would
 still need a ninth moment — keep that distinction explicit.
 
+**Amendment (2026-10-12, after §21).** The recovery exercise weakens one claim
+made above. §9 concludes "DE is canonical" and rests the identification
+argument partly on "DE's stability across two independent serious runs" — but
+both of those runs were warm-started at the KMV Table-3 values on real data.
+§21 shows that on GER-shaped data, DE started from that same neutral point
+lands at `β₁ ≈ 1.84`, in the same low-`β₁` neighbourhood where TikTak's
+Nelder-Mead stalled (`β₁ ≈ 2.2–2.4`), in 4 of 4 draws. So the honest statement
+is narrower than §9's: DE is the better optimiser on this objective and
+reproduces its own answer run-to-run, but it is not demonstrably able to find
+the global optimum from an arbitrary start for a near-random-walk persistent
+component. For GER specifically the canonical estimate is defended not by
+DE's reliability but by a direct objective comparison against the alternate
+basin on real data (§21: 2.6× better). What stands unchanged: the line scan
+showing a single valley, and the parameter-by-parameter sweeps (§8).
+
 ---
 
 ## 10. GRID sample selection: male, 25–55, residualized changes
@@ -788,6 +885,10 @@ demonstrates the choice was made on evidence rather than convention.
   interpolation (the thresholds lie inside the percentile range), never
   extrapolation, and is the intended use of GRID's quantile statistics.
   Accuracy depends on the fineness of the percentile grid, which is high here.
+- **`β₂` is not recoverable for a near-random-walk persistent component**
+  (§21): on synthetic data generated from a known truth, GER's `β₂` comes
+  back ~82% low in every draw, and Poland's fails in 1 of 4. Reported as an
+  identification limit of the 8-moment SMM design, not of the implementation.
 
 **For the write-up.** A short "limitations" subsection. Stating these is
 stronger than leaving them to be discovered.
@@ -864,6 +965,484 @@ starts from facts rather than assumptions. The relevant block is:
 
 ---
 
+## 17. Task 5: is the iMPC matrix a sufficient statistic here? (checked against the source, not assumed)
+
+**Question put by the supervisor.** Auclert–Rognlie–Straub ("The Intertemporal
+Keynesian Cross", NBER WP 25020 / Econometrica) claim the matrix of
+intertemporal MPCs (iMPCs) is a sufficient statistic for general-equilibrium
+aggregate effects. If that holds for our model, the iMPC matrix — not the
+direct/indirect decomposition — is the right object to compare across the
+estimated income processes. Read the paper (full text extracted from the NBER
+PDF via pypdf, since the standard PDF reader choked on it) rather than taking
+the claim on faith.
+
+**The exact theorem (Prop. 1, their eq. 13).** In their baseline "IKC
+environment" (paper's Sections 2–5):
+`dY = dG − M·dT + M·dY`, where `M` has entries `M_ts = ∂C_t/∂Z_s` (the
+response of aggregate consumption at `t` to anticipated after-tax income at
+`s`), and `M` alone is a sufficient statistic for the output path `dY` given
+*any* bounded fiscal shock `{dG, dT}` satisfying the government's
+intertemporal budget constraint (their eq. 12). Existence/uniqueness (Prop. 2)
+requires `K(I−M)` invertible, `K` a known fixed operator.
+
+**The conditions this requires — read directly off their Section 2.2–2.3 setup
+(quoted/paraphrased from the extracted text):**
+1. **A single asset** (real bonds only); no capital, no equity, no portfolio
+   choice.
+2. **Linear production, flexible prices, perfect competition** — real wage
+   `w_t ≡ 1` always; sticky *wages* only. Output is purely demand-determined,
+   `Y_t = C_t + G_t`, with no supply-side block to solve separately.
+3. **Monetary policy pegs the real rate**: `1+i_t = (1+r)(1+π_{t+1})` forces
+   `r_t = r` (constant) for *every* fiscal shock. Their own words: "the path
+   `{r_s}` is not included as an argument [of the consumption function],
+   because of our assumption that monetary policy fixes `r_s = r`." This is
+   an **assumption about the policy closure, not a result** — it is the
+   reason the theorem is stated only for *fiscal* shocks `(dG, dT)`, never for
+   a shock that itself moves `r` (i.e., not for a monetary-policy shock).
+4. Linearization around a steady state (Fréchet-differentiability of the
+   consumption functional; a first-order/sequence-space-Jacobian result, not
+   exact for arbitrary shock size — though the paper notes in a footnote this
+   extends to first-order perturbations of a stochastic economy, not just
+   deterministic MIT shocks).
+
+**Extension to interest-rate/capital-gains shocks (Section 6, Props. 8/12) —
+this is the part that matters for us.** They relax the fixed-`r` assumption
+and add a second asset (equity) with valuation effects. The clean algebraic
+result breaks, but a generalization survives: under **two extra conditions —
+(a) EIS `σ = 1` (log utility) and (b) equal portfolio shares across agent
+types** — the interest-rate Jacobian `M_r` is pinned down by `M` plus a single
+extra object, `mcap` (the MPC out of unanticipated capital gains). Explicitly
+covers their "HA-one" model (one-asset heterogeneous-agent with
+discount-factor heterogeneity — i.e., our model family). They are explicit
+that in this broader environment (their "quantitative environment", Section
+7: capital, sticky prices, a Taylor rule) the sufficiency holds **numerically
+in their calibration, not as a closed-form identity** like Prop. 1.
+
+**Verdict for our model (ARS one-asset HANK, `hank_step2/`).**
+- Our model uses a **Taylor rule reacting to inflation** (`kappa = 0.01`
+  quarterly NKPC slope, §16) and runs **monetary-policy shocks** (an
+  interest-rate shock *is* the experiment, STEP2_LOG §S1/S4/S5) — this is
+  exactly the case excluded from Prop. 1 by construction (condition 3 above
+  requires `r` fixed *regardless* of the shock, which is false for a monetary
+  shock by definition). **Prop. 1's clean "`M` alone suffices" result does not
+  apply to our headline exercise.**
+- The **deficit-financed tax-cut** IRFs we already compute (S1 baseline) are
+  closer in spirit to the paper's own object, but our model also carries a
+  Taylor rule and a capitalization block there (not a real-rate peg), so even
+  that exercise sits in their "quantitative environment", not their exact-
+  theorem "IKC environment" — same caveat applies, with the same fallback
+  below.
+- **The generalization (Props. 8/12) plausibly does apply, conditionally.**
+  Our model uses **log utility (`eis = 1`)** throughout (§16) and is
+  **one-asset** with no cross-type portfolio heterogeneity (every household
+  type holds the same combined bond/equity fund, so "equal portfolio shares"
+  holds trivially) — both of the conditions Props. 8/12 require. So the
+  *generalized* claim — that `M` plus `mcap` (not `M` alone) are sufficient
+  for the interest-rate response, as established **numerically**, not as a
+  closed-form theorem, in their own calibrated one-asset model — is the
+  honest reading for us: **plausible, conditionally supported by the paper's
+  own evidence for the same model class, but not a proven theorem for our
+  specific calibration**, and explicitly not exact once a Phillips curve and
+  Taylor rule are in play.
+- **A separate, important distinction: sufficiency for *aggregate output* is
+  not the same claim as sufficiency for the direct/indirect *decomposition*.**
+  Prop. 1 is a statement about `dY` as a whole; it says nothing about how to
+  split `dY` into channels. ARS's own Fig. 3b-style decomposition (which our
+  §S3/S4 decomposition mirrors) is a *separate* accounting exercise built on
+  partial-equilibrium counterfactuals (holding wages/transfers/capital-gains
+  fixed one at a time) — it uses the same sequence-space-Jacobian machinery
+  `M` comes from, but it is not what Prop. 1 is a theorem about.
+
+**Bottom line.** The supervisor's intuition is directionally right but needs
+one correction: it is not literally "the iMPC matrix `M`" that is the
+sufficient statistic for our monetary-shock comparison — it is the **pair
+`(M, mcap)`** (consumption response to income, and to capital gains), under
+the log-utility + one-asset conditions our model satisfies, and the evidence
+for that pairing being sufficient is numerical in ARS's own paper, not an
+exact theorem the way Prop. 1 is for fixed-`r` fiscal shocks. With that
+correction, the supervisor's suggested comparison is well-founded: compute
+`M` (and `mcap`) for each estimated chain (KMV baseline, USA/FRA/GER/POL) from
+the household block's Jacobian — SSJ produces this as an intermediate object
+when solving steady state/Jacobians, so no new machinery is needed, only
+extracting and tabulating it — and treat *that* as the primary cross-country
+comparison object, with the direct/indirect decomposition kept as the
+output-facing, more interpretable complement rather than replaced by it.
+
+**Next step (deferred, not yet run as of this writing).** Extract `M`
+(`∂C_t/∂Z_s`) and `mcap` from the household block's SSJ Jacobian for each of
+the chains already swapped in step 2 (`hank_step2/swap_chain.py` machinery),
+plot/tabulate the first several rows/columns (cf. their Figure 1) across
+countries, and compare against the KMV/ARS baseline. This lives in
+`hank_step2/`, a separate environment from this repo's `kmv_earnings/`
+package.
+
+---
+
+## 18. Task 1: Poland estimated (2026-10-12)
+
+**Data.** GRID Poland export (`data/dane grid PL.csv`), a *different* column
+schema than the FRA/GER/USA `Stats_*.csv` (`std_perm`/`_resid_dNyr` instead of
+`std_log_inc`/`_res_Nyr_log_chg`) — `grid_loader.py`'s `targets_from_grid_stats_csv`
+now auto-detects both schemas (`_SCHEMAS`) and has a gender filter with an
+assertion that exactly one gender survives (previously it silently averaged
+across genders if a file had more than one — not a live bug for the
+Male-only files used so far, but a latent one the task asked to close).
+Male, prime age 25-55, **full native 2000-2020 window** (not the common
+2001-2016 window — deliberately, see §0's open item above on the tension this
+creates with the shape-comparison framing). Targets in `targets/pol_grid.json`.
+
+**Estimation.** Same pipeline as the other three countries
+(`scripts/close_step1.py`, now with `"POL"` added), full 6 free parameters
+(no `beta2` pin — unlike GER/USA's canonical). DE and TikTak **agree** on the
+persistent component (max rel. diff 1.3%, well under the 25% threshold used
+for USA/FRA/GER) — no identification red flag from this check. DE is
+canonical (OOS f=0.0037 vs TikTak's 0.0037, DE picked on a hair).
+
+| param | value |
+|---|---|
+| lambda1 | 0.1623 |
+| beta1 | 2.846 |
+| sigma1 | 1.979 |
+| lambda2 | 0.00877 |
+| beta2 | 0.0169 |
+| sigma2 | 1.401 |
+
+Implied ergodic sd of the persistent component: **0.71**, below KMV's 0.95 and
+below every other country here (USA free 1.22, FRA 1.09, GER free ~2.68) —
+Poland's persistent component is the *most* mean-reverting of the four, not
+the least, on the free/unrestricted estimate. `beta1 = 2.85` sits closer to
+USA (2.75-2.97 depending on restriction) than to FRA/GER (4.3-5.5) — on
+transitory persistence Poland looks more USA-shaped, which is the dimension
+DECISIONS' two-asset trigger (bottom of the open-decisions list) cares about;
+on persistent-component dispersion it looks nothing like the GRID-USA problem
+case (§12). No parameter at a bound. Fit is good across all 8 moments
+(largest relative error 4.7%, on `frac_d1_lt_10`). Discretized chain shows the
+same known gaps as the other countries (var_d1 ~27% low, §8d; kurtosis
+overshoots a bit at this grid size) — not new issues, no new mechanism.
+
+**Schema-mapping verification (2026-10-12, requested alongside the two-asset
+trigger check below).** The Polish GRID file uses different column names than
+the FRA/GER/USA file (`std_perm`/`_resid_dNyr` vs `std_log_inc`/`_res_Nyr_log_chg`),
+handled by `_SCHEMAS` auto-detection in `grid_loader.py` (§ above). Checked that
+this is a *semantically* correct mapping, not just one that parses: for 2010,
+computed `var_log_earns`, `var_d1`, `kurt_d1`, `var_d5`, `kurt_d5`, and all
+three change-fractions **by hand** directly from the raw CSV row, hard-coding
+the percentile-probability grid myself rather than reusing any of
+`grid_loader.py`'s column-detection code — a genuinely independent path, not
+just a second call into the same helper functions. Matched the loader's
+output exactly on every quantity (e.g. `frac_d1_lt_10` hand-computed 0.4919 vs
+loader 0.4919). Also confirmed `std_resid_d1yr` and `std_resid_d5yr` (and
+their kurtoses) are genuinely different columns feeding the right targets, not
+an accidental same-column reuse. No mapping error found.
+
+**For the write-up.** Poland does not resemble the GRID-USA failure case from
+§12/STEP2_LOG §S5 (thin tail, slow-decaying transitory component) — its
+`kurt_d1` (15.24, data) and `beta1` sit in between the FRA/GER and USA
+patterns. Whether this is close enough to FRA/GER-shaped for the one-asset +
+death HANK structure to calibrate is a step-2 question, not answered here —
+see the two-asset trigger note.
+
+---
+
+## 19. Task 3: bootstrap standard errors (2026-10-12)
+
+**Design.** `scripts/bootstrap_se.py`. Resample years with replacement from
+each country's own GRID year panel (within its estimation window), recompute
+the 8 target moments as the simple across-year mean (verified bit-for-bit
+identical to the original `targets/<cc>_grid.json` construction when applied
+to the unresampled window), re-estimate with a warm start at the country's
+point estimate. 200 reps/country (800 total), DE only (not TikTak — §9 already
+establishes TikTak's local phase is unreliable here, and it would roughly
+double the cost for no identification benefit). GER/USA keep their `beta2`
+pin in every rep, so their reported SE/CI cover only the five free
+parameters — bootstrapping a calibrated quantity would misrepresent
+calibration as sampling uncertainty.
+
+**Budget.** Full-serious settings (50k-worker panel, DE maxiter=100/popsize=12,
+NM polish 400 iters) cost ~30 min per estimate even at 10-way parallelism —
+200x4 reps at that cost would run for weeks. Reduced to a 5,000-worker
+panel, DE maxiter=10/popsize=5, NM polish 50 iters, still warm-started at the
+point estimate. Validated against a larger reference budget (15,000 workers,
+maxiter=20/popsize=6, NM 100 iters) on 3 resamples per country before
+committing to the full sweep, as the task required — not skipped.
+
+**A methodological incident, worth recording because it could recur.** The
+first validation run flagged what looked like a severe reduced-budget bias
+specific to Poland (`beta1` off by 40-67%, nothing like USA/FRA/GER's <10%
+gaps). Root cause: the validation step launched **while Poland's serious
+`close_step1.py` run was still mid-flight**, so it warm-started from a stale
+`output/pol/params.json` left over from an earlier `--quick` smoke test
+(which, carelessly, wrote to the same path as the serious run) — not from the
+real estimate. Confirmed by checking the file's mtime and content against the
+quick-test log. The real 800-rep sweep was unaffected in the end, because its
+jobs are queued country-by-country (Poland last) and by the time Poland's
+chunk ran, the real file was in place — but the validation's **aggregate**
+verdict ("OK, not systematically biased") was also wrong on its own terms: it
+pools the systematic-bias check across all four countries, so Poland's large
+deviation was averaged away by USA/FRA/GER's small ones (pooled
+`beta1` mean=-11%, sd=27%, under the 15%-mean threshold; the per-country
+numbers were -39% to -67% for Poland alone). Fixed `report_validation` to
+check per-country, not pooled, so one bad country can no longer hide behind
+the others. **Lesson for later reduced-budget/warm-start exercises in this
+project (Task 4 included): never launch a bootstrap/recovery/reduced-budget
+job against a point estimate that is concurrently being overwritten by
+another running job, and never write quick-smoke-test output to the same path
+as a serious run's output.**
+
+**Result — final 800-rep sweep (post-fix, Poland using the correct warm
+start), SE and 95% percentile CI:**
+
+| | lambda1 | beta1 | sigma1 | lambda2 | beta2 | sigma2 |
+|---|---|---|---|---|---|---|
+| USA mean | 0.214 | 2.968 | 1.942 | 0.01045 | 0.01398 [locked] | 1.561 |
+| USA SE | 0.0040 | 0.082 | 0.0076 | 0.00031 | - | 0.021 |
+| FRA mean | 0.190 | 4.367 | 1.915 | 0.00694 | 0.00484 | 1.094 |
+| FRA SE | 0.0022 | 0.141 | 0.0096 | 0.00023 | 0.00040 | 0.0029 |
+| GER mean | 0.156 | 5.518 | 1.798 | 0.01029 | 0.00663 [locked] | 1.083 |
+| GER SE | 0.0018 | 0.126 | 0.0067 | 0.00009 | - | 0.0021 |
+| POL mean | 0.159 | 2.850 | 1.982 | 0.00882 | 0.01690 | 1.411 |
+| POL SE | 0.0033 | 0.055 | 0.0113 | 0.00035 | 0.00119 | 0.0160 |
+
+Poland's bootstrap mean (`beta1`=2.850, 95% CI [2.74, 2.96]) sits right on the
+point estimate (2.846) with a tight CI — direct confirmation the earlier
+validation scare was the warm-start artifact above, not a real problem with
+the reduced budget. All four countries' point estimates sit comfortably
+inside their own bootstrap means, and relative SEs are small (mostly 1-5% of
+the point estimate) except where a parameter is already known to be weakly
+identified over a short panel.
+
+**Honest caveat (as the task required, stated plainly, not buried).** This
+measures year-to-year *sampling* variability in the reported GRID statistics
+only. It is not a full-sample-uncertainty SE — GRID's underlying microdata and
+true sampling distribution are not available, so this cannot capture, e.g.,
+measurement error in the underlying earnings records or the finite-population
+correction a full survey-design SE would need.
+
+**Second caveat (added 2026-10-12 after §21): the CIs are conditional on the
+correct basin.** Every bootstrap rep is warm-started at the country's point
+estimate, so by construction each rep searches locally around the basin the
+point estimate already sits in. That is the right design for measuring
+sampling variability cheaply, but it means the reported SE/CI contain no
+component for the risk that the point estimate itself sits in the wrong
+basin. §21 shows that risk is not hypothetical: for GER, a blind
+re-estimation from a neutral start reaches a different point in 4 of 4
+draws, and for POL in 1 of 4. So GER's `β₁` SE of 0.126 should be read as
+"variability of the estimate given this basin", not as total uncertainty
+about `β₁`. Say this explicitly in the thesis wherever the SE table appears.
+
+**For the write-up.** Report the SE/CI table with the caveat above stated in
+the same sentence, not in a footnote. The validation incident is worth one
+sentence as a methods point (warm-started reduced-budget resampling needs a
+*stable* warm start) but not a deep dive.
+
+---
+
+## 20. Poland's two-asset trigger check, and whether it depends on the window choice (2026-10-12)
+
+**Question 1: does Poland need two-asset, or does one-asset + death suffice?**
+Run `hank_step2/swap_death.py pol` (one-asset ARS model + ARS β-heterogeneity
++ KMV stochastic death, jointly re-calibrated to `A=20`, impact labor
+`MPC=0.20`, SCF Lorenz — identical procedure to FRA/GER/USA, STEP2_LOG §S5).
+**Poland calibrates cleanly**, matching FRA/GER, not the GRID-USA failure
+mode:
+
+| | target | **POL** | FRA | GER | USA (degenerate) |
+|---|---|---|---|---|---|
+| converged | — | **yes**, resid ~1e-12 | yes | yes | no |
+| MPC (labor, impact) | 0.20 | **0.2000** | 0.200 | 0.200 | 0.024-0.029 |
+| frac at borrowing constraint | — | **0.226** | 0.225 | 0.250 | ~0.01 |
+| dβ (heterogeneity spread) | — | **0.125** | 0.093 | - | →0 |
+| β_lo | — | 0.873 | 0.905 | - | - |
+| decomp yr1 direct/indirect | — | **22.6/77.4%** | 25.5/74.5 | 24/76 | degenerate |
+| monetary dY impact (base 2.41) | — | 2.30 (-4.5%) | 2.29 (-5%) | 2.33 (-4%) | 1.81-1.85 |
+
+Every diagnostic that separates the FRA/GER cluster from the USA failure
+(dβ staying well off zero, a believable hand-to-mouth fraction, "indirect
+dominates" surviving intact) lands on the FRA/GER side for Poland. **No
+escalation to two-asset is forced by this test.** Note this contradicts the
+rule-of-thumb threshold recorded in the open-decisions list (`β₁ ≲ 3` →
+GRID-USA-shaped): Poland's `β₁ = 2.85` sits just below it, but the ergodic
+variance of its persistent component (sd 0.71, the *lowest* of all four
+countries — §18) and the shape of its kurtosis pull the other way, and the
+actual calibration run is unambiguous. **The lesson: run the check, don't
+apply the threshold mechanically** — exactly the caution raised before running
+it (DECISIONS §0's two-asset trigger note).
+
+**Question 2: does this answer depend on the 2000-2020 vs a split window?**
+Motivated by the 2009 kurtosis/small-change-fraction regime shift documented
+in `output/pl_diagnostics/README.md` (kurt Δ1y jumps from ~13.5 to 15-17
+starting exactly in 2009 and stays elevated for seven years, at roughly
+unchanged variance). Built separate targets for 2000-2008 and 2009-2020
+(`targets/pol_grid_{pre,post}2009.json`, `scripts/pol_regime_split.py`,
+DE-only — TikTak not needed for this exploratory split, §9), then ran the
+same `swap_death.py` check on both resulting chains.
+
+*Parameters move only modestly across the split* (full-window shown for
+reference):
+
+| | full (00-20) | pre (00-08) | post (09-20) |
+|---|---|---|---|
+| lambda1 | 0.162 | 0.177 | 0.153 |
+| beta1 | 2.846 | 2.857 | 2.816 |
+| sigma1 | 1.979 | 1.986 | 1.976 |
+| lambda2 | 0.0088 | 0.0096 | 0.0078 |
+| beta2 | 0.0169 | 0.0178 | 0.0130 |
+| sigma2 | 1.401 | 1.397 | 1.333 |
+| ergodic sd(z2) | 0.714 | 0.726 | 0.729 |
+
+Despite the sharp raw-moment shift (kurt_d1 14.3 -> 16.0, var_d1 0.285 ->
+0.239 across the split — moving in *opposite* directions, i.e. a genuine
+shape change, not a scale change), the estimated process absorbs it with a
+fairly small change in the persistent component's activity (`lambda2`/`beta2`
+both a bit lower post-2009 — slightly rarer, slightly slower-decaying
+persistent shocks), not a different process family. Both sub-windows fit well
+(f=0.0046 pre, f=0.0032 post, vs f=0.0037 full-window).
+
+*And the two-asset trigger answer is identical on both sub-windows*:
+
+| | full | pre-2009 | post-2009 |
+|---|---|---|---|
+| converged | yes | yes | yes |
+| MPC | 0.200 | 0.200 | 0.200 |
+| frac HtM | 0.226 | 0.220 | 0.225 |
+| dβ | 0.125 | 0.141 | 0.112 |
+| decomp yr1 direct/indirect | 22.6/77.4 | 22.6/77.4 | 22.9/77.1 |
+
+**Answer: no, the two-asset decision does not depend on the window choice.**
+All three windows calibrate cleanly, with near-identical MPC, hand-to-mouth
+share, and decomposition. This is itself worth reporting as a robustness
+result, not just a technicality dispatched in a footnote: the 2009 regime
+shift is real and visible in the raw moments (§ diagnostics), but it is not
+large enough, nor of the right *kind*, to move the one-asset-vs-two-asset
+decision. Had the answer differed between sub-windows, the choice of
+2000-2020 vs a split would have become a substantive modelling decision
+rather than a data-availability one (§0's open item) — it did not.
+
+**Schema-verification note (requested alongside this check, done, see §18).**
+
+**For the write-up.** This section answers the two-asset trigger question
+definitively for Poland and closes the corresponding open-decisions bullet
+above. Report the full-window numbers as primary and the pre/post split as a
+robustness check demonstrating the window choice is immaterial to this
+decision.
+
+---
+
+## 21. Task 4: parametric recovery — a sharper identification test than the line scan (2026-10-12)
+
+**Design (reduced scope, see the time-estimate correction below).**
+`scripts/recovery_exercise.py`. Take each country's FREE (unrestricted)
+6-parameter estimate as the "true" process — for GER this required a new
+free estimate first (§ above, `output/ger_free_beta2/`), since GER's canonical
+pins `beta2`. Simulate a synthetic panel from the true process with a
+generating seed **different** from the CRN seed used inside the estimator
+(otherwise the test is trivial — the "recovered" estimate would just read
+back the same random draws it was fitted to). Compute the 8 moments on that
+panel, treat them as data, and re-estimate from scratch with DE (not
+TikTak — §9), warm-started at the *neutral* KMV Table-3 values, not at the
+truth (warm-starting at the truth would make even a weakly-identified
+parameter trivially "recover" and defeat the point). Compare recovered vs
+true parameters, especially `beta2` and the implied ergodic sd of the
+persistent component, across several generating seeds and panel sizes.
+
+Reduced to **2 seeds x 2 panel sizes (50k, 300k)** = 16 reps total (not the
+original 3x3=36) after the first timed rep showed ~28-30 min per
+re-estimation even at full 10-core parallelism (the initial ~10 min guess,
+based on under-calibrated assumptions about DE-only cost, was wrong by
+~3x) — would have cost ~17-18h at full scope; the reduction was agreed with
+the user to fit an ~8h budget. Also ran concurrently with the Task 1/2
+two-asset trigger checks (§20) and Task 2's nested-specs runs, at the user's
+explicit instruction to accept the resulting slowdown.
+
+**Headline result, properly disentangled (optimiser reliability vs
+identification — the same distinction §9 insists on, now with sharper
+evidence):**
+
+| country | beta2 reldiff (mean, 4 reps) | consistent across reps? | improves with panel size? |
+|---|---|---|---|
+| USA | -1.8% (range -3.1% to -0.6%) | yes, tight (sd 1.0%) | no (if anything slightly worse at n=300k: -0.9%->-2.7%) |
+| FRA | -4.0% (range -4.4% to -3.5%) | yes, tight (sd 0.3%) | no (-3.7%->-4.3%) |
+| **GER** | **-82.3%** (range -80.7% to -83.2%) | **yes, every single rep** (sd 1.0%) | **no** (-81.9% at both panel sizes) |
+| POL | -25.2% mean, but **3/4 reps within 1%**, 1/4 catastrophic (-99.4%) | **no — bimodal** | the failure was at the *larger* panel (n=300k), not smaller |
+
+**USA and FRA: beta2 is well identified.** Small, stable biases (1-4%), no
+dependence on sample size — ordinary small-sample bias, not an
+identification problem.
+
+**GER: beta2 (and, surprisingly, beta1/lambda1 too) fails systematically —
+real evidence, but it is evidence of a flat valley, not two equally good
+optima.** All 4 independent generating draws converge to the **same**
+alternate point (`beta1~1.84, lambda1~0.09, beta2~0.0001`) regardless of seed
+or panel size — the consistency itself (not scatter) is the signal: this is a
+robust, repeatable feature of the objective surface for GER-shaped data, not
+optimiser noise. But checking the objective value at the true point vs the
+recovered point on the *same* synthetic targets shows the true point is
+genuinely better (`f=0.00024` at truth vs `f=0.00085` at the recovered point,
+on one rep) — both are small, "good fit" numbers by this project's own
+standard, so the surface is very flat between them, but it is not literally
+indistinguishable. **Reading: with a fully serious optimisation budget — the
+exact DE configuration used for every real-country estimate in this
+project — the search still cannot reliably climb out of a shallow secondary
+basin back to the true point, for a process this weakly identified in its
+persistent component.** That is a stronger and more operational statement
+than "the objective sweep is flat near the optimum" (§8b): it says the actual
+*estimation procedure*, not just the *objective function in the abstract*,
+fails to recover the true process here.
+
+**A striking cross-check: this alternate basin is not new.** `beta1 ~ 1.84` is
+in the same low-beta1 neighbourhood TikTak's Nelder-Mead local phase got stuck
+in on GER's *real* data (§9: `beta1 ~ 2.2-2.4`) — a completely different
+optimiser (sequential Nelder-Mead vs differential evolution), a completely
+different dataset (real GER moments vs noise-free synthetic data generated
+from the model's own free estimate), and they land in the same region. That
+is strong independent evidence this is a genuine, repeatable feature of the
+objective landscape for GER/near-random-walk-shaped data, not an artefact of
+one algorithm or one dataset.
+
+**Does this put the canonical free-GER estimate itself in doubt?** Checked
+directly: evaluated the "alternate basin" point found in the recovery
+exercise against GER's **real** (not synthetic) targets. `f=0.00564` at the
+alternate point vs `f=0.00219` at the canonical free estimate — the canonical
+estimate is still clearly better (2.6x) on the real data, a wider margin than
+on the synthetic data (3.5x on one rep, but both numbers tiny). **So the free
+GER estimate used elsewhere in this project is not undermined** — but the
+margin is not large, and this is exactly the kind of check that should be
+repeated if GER's free estimate is ever leaned on harder (e.g. if the pinned
+`beta2` calibration, §8b, were ever revisited).
+
+**Poland: mostly well identified, but not bulletproof — a genuine,
+occasional optimiser failure, distinct from GER's systematic one.** 3 of 4
+reps recover `beta2` to within 1%. The 4th (seed 202, n=300,000) collapses to
+the *same qualitative* alternate basin as GER (`beta2 -> 0.0001`,
+`lambda2` exploding +1039%, ergodic sd blowing up to 4.7 vs true 0.71). But
+checking the objective at the true point vs the recovered point on that
+rep's synthetic targets shows a **large** gap (`f=0.00011` at truth vs
+`f=0.00947` at the recovered point — 83x worse, not 3.5x as for GER). That
+asymmetry is the tell: **this is DE failing to converge on one unlucky run,
+not a robust alternate optimum** — if it were a genuine competing basin like
+GER's, it would show up with a comparably small objective gap, and ideally in
+more than 1 of 4 draws. Still informative: it shows the same qualitative
+trap exists within reach of Poland's parameter region too (never triggered
+for USA or FRA in 8 combined reps), so Poland's identification margin is
+real but **not as comfortable as USA/FRA's** — multiple-seed or multi-start
+confirmation (as already done for the canonical estimate via DE-vs-TikTak
+agreement, §18, which agreed to 1.3%) is worth keeping as standard practice
+for Poland specifically, not dropped as redundant.
+
+**For the write-up.** This is the headline identification result for the
+thesis, stronger than the line scan (§9) because it does not require already
+knowing where to look — it is a blind re-estimation from a neutral start.
+State the three-way distinction plainly: USA/FRA well-identified;
+**GER systematically fails even with a full serious budget and a
+noise-free, best-case synthetic dataset** — the clearest, most direct
+evidence in the whole project that `beta2` cannot be estimated for a
+near-random-walk persistent component from these 8 moments, which is exactly
+why it is calibrated rather than estimated (§8b); **Poland is well identified
+on average but has a real, if infrequent, failure mode** worth flagging as a
+caveat on the point estimate's robustness, not as grounds for recalibrating.
+
+---
+
 ## Open decisions (not yet settled)
 
 - ~~**If `β₁` again runs to its bound after widening to 8.0:** fix it and
@@ -914,23 +1493,26 @@ starts from facts rather than assumptions. The relevant block is:
   protection), or should be reported without one.
 - **Chain size for step 2:** 75 states is the current default; may need to drop
   to 33 if the model solve is too slow.
-- **One-asset vs two-asset model in step 2 — resolved for USA/FRA/GER; Poland
-  is the trigger.** The one-asset ARS model + KMV stochastic death (`death.py`,
+- ~~**One-asset vs two-asset model in step 2 — Poland is the trigger.**~~
+  **RESOLVED 2026-10-12, see §20: Poland calibrates cleanly, one-asset + death
+  is sufficient.** The rule-of-thumb threshold below (`β₁ ≲ 3`) would have
+  pointed the wrong way for Poland (`β₁ = 2.85`) — the actual `swap_death.py`
+  run is decisive and settles it instead. Two-asset remains wanted on other
+  grounds (cross-sectional MPC distribution, wealthy-HtM mechanism, portfolio
+  channel) if the thesis needs those, just not *forced* by a calibration
+  failure. Original rule-of-thumb text kept below for the record:
+  the one-asset ARS model + KMV stochastic death (`death.py`,
   STEP2_LOG §S5) calibrates cleanly for **FRA and GER** — MPC 0.20, monetary IRF
   within 7% of baseline, KMV's 20/80 split reproduced (§S3). **USA** does not
   calibrate (thin GRID-USA tail, §12) but is validated by the S1 baseline on
   KMV's chain. So one-asset is the plan.
-  **Trigger for switching to two-asset: the Polish estimated chain is
-  GRID-USA-shaped** — `kurt Δ1y` well below ≈ 15 *and/or* a slow-decaying
+  The trigger for switching to two-asset was going to be: the Polish estimated
+  chain is GRID-USA-shaped — `kurt Δ1y` well below ≈ 15 *and/or* a slow-decaying
   transitory component (`β₁` ≲ 3). If Poland looks like France/Germany
   (`kurt Δ1y` ≳ 15, `β₁` ≳ 4), one-asset + death handles it. If it looks like
   GRID-USA (thin tail, persistent transitory), the one-asset model will not
   calibrate for Poland and the two-asset model (STEP2_LOG §S6, ≈ 2 weeks, SSJ
-  `examples/two_asset`) is required. Do not start building until the Polish
-  estimate is in hand. The check is quick — run `swap_death.py` on the Polish
-  chain once it exists. Two-asset would also be wanted regardless if the thesis
-  needs the cross-sectional MPC distribution (KMV Fig 5–6), the wealthy-HtM
-  mechanism as such, or the portfolio channel.
+  `examples/two_asset`) is required.
 - **Aggregate match vs channel-level match (STEP2_LOG §S3).** The 20/80
   direct–indirect *split* matches KMV, but the *composition* of the indirect
   effects does not (ARS asset-return/capital-gains channel +22% vs KMV's −2%;
@@ -946,5 +1528,11 @@ starts from facts rather than assumptions. The relevant block is:
   elsewhere and that alone moves MPCs and transmission. "What do we calibrate
   Polish `beta` to, and what is the asset target" is a thesis-design question
   for Zoch, not an implementation detail. Raise before the Polish stage.
-- **Poland:** earnings targets (Polish panel data / EU-SILC) and wealth moments
-  (NBP HFS / ECB HFCS) still pending.
+- ~~**Poland:** earnings targets (Polish panel data / EU-SILC) and wealth
+  moments (NBP HFS / ECB HFCS) still pending.~~ **Resolved** — Polish GRID
+  targets built for 2000-2020 (§18), wealth moments still pending and still a
+  Żoch question.
+- **Is the canonical GER point the floor of the valley?** §21 defended it
+  against one specific alternate point, but never checked whether the
+  objective keeps falling past `β₁ = 5.34` in the same direction the original
+  line scan was going. Cheap to settle — see the extended-line-scan task.

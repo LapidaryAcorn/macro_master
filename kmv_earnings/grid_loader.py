@@ -147,15 +147,62 @@ def load_targets(path: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Loader for the actual GRID "Stats_*.csv" export format (verified against a
-# real download, July 2026): one wide file, rows = country x year, columns:
-#   country, year, gender, age,
-#   nobs_log_inc, std_log_inc,
-#   nobs_res_1yr_log_chg, std_res_1yr_log_chg, kurt_res_1yr_log_chg,
-#   p{q}_res_1yr_log_chg for q in 1, 2_5, 5, 10, 12_5, 25, ..., 99_9, 99_99,
-#   nobs_res_5yr_log_chg, mean_res_5yr_log_chg, std_res_5yr_log_chg,
-#   kurt_res_5yr_log_chg
+# Loader for GRID "Stats_*.csv"-style exports: one wide file, rows = country x
+# year, columns giving level dispersion, 1y/5y residualized log-change
+# dispersion, and a percentile grid of the 1y change. GRID's own column naming
+# has changed between downloads (verified on two real exports, July 2026 and
+# October 2026) -- the schema below is auto-detected per file, not hardcoded,
+# so a third naming convention just needs a new entry in _SCHEMAS.
+#
+#   schema "res_1yr_log_chg" (FRA/GER/USA download, July 2026):
+#     nobs_log_inc, std_log_inc,
+#     nobs_res_1yr_log_chg, std_res_1yr_log_chg, kurt_res_1yr_log_chg,
+#     p{q}_res_1yr_log_chg for q in 1, 2_5, 5, 10, 12_5, 25, ..., 99_9, 99_99,
+#     nobs_res_5yr_log_chg, std_res_5yr_log_chg, kurt_res_5yr_log_chg
+#
+#   schema "resid_dNyr" (Poland download, October 2026):
+#     nobs_perm, std_perm,
+#     nobs_resid_d1yr, std_resid_d1yr, kurt_resid_d1yr,
+#     p{q}_resid_d1yr for the same q grid,
+#     nobs_resid_d5yr, std_resid_d5yr, kurt_resid_d5yr
 # ---------------------------------------------------------------------------
+
+_SCHEMAS = [
+    {
+        "name": "res_1yr_log_chg",
+        "level_std": "std_log_inc",
+        "d1_suffix": "_res_1yr_log_chg",
+        "d1_nobs": "nobs_res_1yr_log_chg",
+        "d1_std": "std_res_1yr_log_chg",
+        "d1_kurt": "kurt_res_1yr_log_chg",
+        "d5_nobs": "nobs_res_5yr_log_chg",
+        "d5_std": "std_res_5yr_log_chg",
+        "d5_kurt": "kurt_res_5yr_log_chg",
+    },
+    {
+        "name": "resid_dNyr",
+        "level_std": "std_perm",
+        "d1_suffix": "_resid_d1yr",
+        "d1_nobs": "nobs_resid_d1yr",
+        "d1_std": "std_resid_d1yr",
+        "d1_kurt": "kurt_resid_d1yr",
+        "d5_nobs": "nobs_resid_d5yr",
+        "d5_std": "std_resid_d5yr",
+        "d5_kurt": "kurt_resid_d5yr",
+    },
+]
+
+
+def _detect_schema(df: pd.DataFrame) -> dict:
+    for schema in _SCHEMAS:
+        if schema["level_std"] in df.columns and schema["d1_std"] in df.columns:
+            return schema
+    raise ValueError(
+        "Unrecognised GRID stats column schema -- none of the known column "
+        f"sets match {sorted(df.columns)}. Add a new entry to _SCHEMAS in "
+        "grid_loader.py after inspecting the file's header."
+    )
+
 
 def _pct_prob_from_name(col: str, suffix: str) -> float | None:
     """'p12_5_res_1yr_log_chg' -> 0.125, 'p99_99_...' -> 0.9999."""
@@ -172,6 +219,7 @@ def targets_from_grid_stats_csv(
     country: str,
     year_range: tuple[int, int] | None = None,
     weight_by_nobs: bool = False,
+    gender: str | None = "Male",
 ) -> dict:
     """
     Build the 8-moment target dict for one country from a GRID Stats_*.csv.
@@ -179,13 +227,34 @@ def targets_from_grid_stats_csv(
     default; weight_by_nobs=True weights by cell observation counts).
     Fractions of small 1y changes are interpolated from the percentile grid
     of the residualized 1-year change distribution.
+
+    `gender`: filter the `gender` column to this value before anything else
+    (default "Male", matching the KMV/GKOS sample design, §10). Pass None to
+    skip filtering -- but then an assertion below still requires that exactly
+    one gender value survives, because averaging statistics across genders
+    silently mixes in participation-margin effects that have nothing to do
+    with the income *process* (§10). Raise, don't average, if that is not
+    already the case.
     """
     df = pd.read_csv(path)
     df = df[df["country"] == country]
+    if gender is not None and "gender" in df.columns:
+        df = df[df["gender"].astype(str).str.lower() == gender.lower()]
     if year_range:
         df = df[df["year"].between(*year_range)]
     if df.empty:
         raise ValueError(f"No rows for country={country} in {path}")
+
+    if "gender" in df.columns:
+        genders = df["gender"].dropna().unique()
+        assert len(genders) == 1, (
+            f"targets_from_grid_stats_csv would silently average over "
+            f"genders {sorted(map(str, genders))} for country={country!r} -- "
+            "pass gender='Male' (or whichever single value the file uses) to "
+            "filter first."
+        )
+
+    schema = _detect_schema(df)
 
     def avg(col, wcol=None):
         if weight_by_nobs and wcol is not None:
@@ -193,18 +262,18 @@ def targets_from_grid_stats_csv(
             return float((df[col] * w).sum() / w.sum())
         return float(df[col].mean())
 
-    df = df.assign(_v_log=df["std_log_inc"] ** 2,
-                   _v_d1=df["std_res_1yr_log_chg"] ** 2,
-                   _v_d5=df["std_res_5yr_log_chg"] ** 2)
+    df = df.assign(_v_log=df[schema["level_std"]] ** 2,
+                   _v_d1=df[schema["d1_std"]] ** 2,
+                   _v_d5=df[schema["d5_std"]] ** 2)
     targets = {
         "var_log_earns": avg("_v_log"),
-        "var_d1": avg("_v_d1", "nobs_res_1yr_log_chg"),
-        "var_d5": avg("_v_d5", "nobs_res_5yr_log_chg"),
-        "kurt_d1": avg("kurt_res_1yr_log_chg", "nobs_res_1yr_log_chg"),
-        "kurt_d5": avg("kurt_res_5yr_log_chg", "nobs_res_5yr_log_chg"),
+        "var_d1": avg("_v_d1", schema["d1_nobs"]),
+        "var_d5": avg("_v_d5", schema["d5_nobs"]),
+        "kurt_d1": avg(schema["d1_kurt"], schema["d1_nobs"]),
+        "kurt_d5": avg(schema["d5_kurt"], schema["d5_nobs"]),
     }
 
-    suffix = "_res_1yr_log_chg"
+    suffix = schema["d1_suffix"]
     probs, cols = [], []
     for c in df.columns:
         p = _pct_prob_from_name(c, suffix)
