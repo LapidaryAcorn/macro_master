@@ -1717,6 +1717,47 @@ breaks (fails to converge) if forced onto USA's imposed anchor; this is
 itself a finding about how the countries differ, not a nuisance to be
 normalized away.
 
+### 23a. The OOS-f-vs-var2 plot, and which points are noise-indistinguishable
+
+`scripts/plot_pol_var2_profile.py`, `output/pl_diagnostics/11_var2_profile.png`.
+Plots OOS `f` (log scale) against `var2` for all 5 points — the 4 pinned
+profile points plus the canonical free estimate — and marks a
+noise-indistinguishability threshold at **+20% of the best pinned point's
+`f`**, per §9's direct measurement that Monte Carlo noise at this objective
+scale runs ~23% of the mean.
+
+**The canonical free estimate is not noise-close to anything pinned.** Its
+`f = 0.0037` sits roughly 5.4x below the best pinned point (`var2=0.70`,
+`f=0.0200`) — far outside any plausible noise band. Free estimation finds a
+genuinely better fit than forcing `var2` to any single tested value,
+confirming §22's point that `β₂`'s weak discipline in the *fit* sense does
+not mean the data are indifferent to `var2` once a specific value is
+imposed.
+
+**Among the pinned points, `var2=0.40` and `var2=0.70` are noise-
+indistinguishable from each other; `var2=0.30` and `var2=0.9103` are not.**
+Threshold = `1.20 × 0.0200 = 0.0240`. `var2=0.40` (`f=0.0203`) and
+`var2=0.70` (`f=0.0200`, the best pinned point) both sit under it — a
+roughly `[0.4, 0.7]` band, bracketing the canonical `0.509`, inside which
+the pinned objective cannot distinguish one value from another. `var2=0.30`
+(`f=0.0753`, 3.8x the threshold) and `var2=0.9103` (`f=0.0310`, 1.3x the
+threshold) are both clearly outside it — real degradation, not noise, on
+both sides.
+
+**Which moment breaks on each side — confirmed cleanly, and consistently on
+both sides of the band, not just at the extremes.** `var2=0.30`'s worst
+moment is `var_log_earns` (`-26.3%`); `var2=0.40`'s worst moment is *also*
+`var_log_earns` (`-13.0%`, same direction, milder) — the low side is
+disciplined by **level dispersion**, consistently. `var2=0.9103`'s worst
+moment is `var_Δ5y` (`-13.5%`); `var2=0.70`'s worst moment is *also*
+`var_Δ5y` (`-8.9%`, same direction, milder) — the high side is disciplined
+by **5-year change variance**, consistently. This is exactly the asymmetric
+discipline hypothesized before running the full-budget version, now
+confirmed moment-by-moment on four independent points, not just the two
+extremes: `var_log_earns` pulls `var2` up from below, `var_Δ5y` pulls it
+down from above, and the canonical free estimate sits almost exactly where
+these two pulls balance.
+
 ---
 
 ## Open decisions (not yet settled)
