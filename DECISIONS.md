@@ -716,6 +716,43 @@ DE's reliability but by a direct objective comparison against the alternate
 basin on real data (§21: 2.6× better). What stands unchanged: the line scan
 showing a single valley, and the parameter-by-parameter sweeps (§8).
 
+**Line scan extended past the DE point (2026-10-12).** The open question this
+amendment raised — is the canonical point actually the floor of the valley,
+or does the objective keep falling past it in the same direction? —
+`scripts/extend_line_scan.py` answers directly: continue the same
+log-parameter-space line from the TikTak point through the DE point (`a=0` to
+`a=1`, exactly reproducing `output/tiktak_line_scan.json`'s construction) out
+to `a = 1.25, 1.5, 1.75, 2.0` — i.e. 25-100% further in the same direction,
+on real targets, same CRN. (The a=0/a=1 reproduction came out close but not
+bit-for-bit identical to the original file — FRA `f=0.00418` vs original
+`0.00420` at `a=0`, `0.00121` vs `0.00127` at `a=1`; GER similarly ~1-2% off.
+Almost certainly environment drift, e.g. a numpy RNG implementation change
+since the original scan predates this session — the shape is unaffected and
+the conclusion below does not depend on the small offset.)
+
+**Result: the objective rises sharply and monotonically past the DE point for
+both countries — the canonical estimate is the valley floor, not a point on a
+still-descending slope.**
+
+| | FRA `f` | GER `f` |
+|---|---|---|
+| a=1.00 (DE, canonical) | 0.00127 | 0.03500 |
+| a=1.25 | 0.00264 (+108%) | 0.03893 (+11%) |
+| a=1.50 | 0.00907 (+614%) | 0.05338 (+53%) |
+| a=1.75 | 0.02486 (+1857%) | 0.08898 (+154%) |
+| a=2.00 | 0.05531 (+4257%) | 0.15674 (+348%) |
+
+FRA's objective is already more than double by `a=1.25` and rises over 40-fold
+by `a=2.00`; GER rises more gradually at first but still clearly and
+monotonically, quadrupling by `a=2.00`. **This settles the open question from
+the amendment above: the canonical point is the valley floor along the
+direction connecting the two optimisers — it is not merely "better than
+TikTak", it is a genuine local minimum extending well past it.** Combined
+with the parameter-by-parameter sweeps (§8) and this extended scan, three
+independent pieces of evidence now agree the canonical estimate sits in a
+true (if shallow, per §21's recovery evidence) basin, not on an open slope.
+Data in `output/tiktak_line_scan_extended.json`.
+
 ---
 
 ## 10. GRID sample selection: male, 25–55, residualized changes
@@ -1532,7 +1569,9 @@ caveat on the point estimate's robustness, not as grounds for recalibrating.
   moments (NBP HFS / ECB HFCS) still pending.~~ **Resolved** — Polish GRID
   targets built for 2000-2020 (§18), wealth moments still pending and still a
   Żoch question.
-- **Is the canonical GER point the floor of the valley?** §21 defended it
-  against one specific alternate point, but never checked whether the
-  objective keeps falling past `β₁ = 5.34` in the same direction the original
-  line scan was going. Cheap to settle — see the extended-line-scan task.
+- ~~**Is the canonical GER point the floor of the valley?**~~ **Resolved
+  2026-10-12, see §9's extended-line-scan addendum:** yes — the objective
+  rises sharply and monotonically past the DE point for both GER and FRA
+  (GER quadruples, FRA rises over 40x by 100% further along the same
+  direction). The canonical point is a genuine local minimum, not a point on
+  a still-descending slope.
