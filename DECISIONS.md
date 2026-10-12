@@ -726,9 +726,32 @@ to `a = 1.25, 1.5, 1.75, 2.0` — i.e. 25-100% further in the same direction,
 on real targets, same CRN. (The a=0/a=1 reproduction came out close but not
 bit-for-bit identical to the original file — FRA `f=0.00418` vs original
 `0.00420` at `a=0`, `0.00121` vs `0.00127` at `a=1`; GER similarly ~1-2% off.
-Almost certainly environment drift, e.g. a numpy RNG implementation change
-since the original scan predates this session — the shape is unaffected and
-the conclusion below does not depend on the small offset.)
+
+**Correction (2026-10-12): this is not environment drift — checked directly,
+twice.** First guess was a numpy RNG change since the original scan predates
+this session. Wrong. Reproduced FRA's `a=1` (DE) point independently on a
+*different machine* (numpy 2.5.3) running the code as it stood at commit
+`6c060bd`, and got `f=0.0012070` — matching this session's own
+`extend_line_scan.py` value (`0.0012069597826309614`) to 7 significant
+figures, and *not* matching the archived `0.001269` in
+`tiktak_line_scan.json`. So today's code is perfectly reproducible
+machine-to-machine and commit-to-commit; the archived value simply came from
+whatever uncommitted, since-lost script originally produced
+`tiktak_line_scan.json` (confirmed it was never checked in — there is no
+script in the repo history that generates that file), running with settings
+that are not quite the same as `extend_line_scan.py`'s. The ~1-2% gap is a
+different-script artefact, not a reproducibility problem with current code.
+
+**Separately, and worth stating on its own: Monte Carlo noise at this point
+is substantial relative to `f` itself.** Evaluated the objective at FRA's DE
+point under 5 different seeds and 3 different simulated-panel sizes (holding
+parameters fixed): `f` ranged from `0.00121` to `0.00233` (mean `0.00160`,
+sd `0.00036`, i.e. **sd/mean ≈ 23%** of the point's own objective value).
+Practical implication: a ratio near 1 between two objective values at this
+scale — e.g. §22's GER `V3` result (`0.0028` vs `0.0025`, a `1.1×` ratio) —
+sits well inside this noise band and should not be read as a real
+difference. A ratio of several-fold or more (§22's `V1`/`V2` results, both
+`>100×`) is far outside it and is a real signal.)
 
 **Result: the objective rises sharply and monotonically past the DE point for
 both countries — the canonical estimate is the valley floor, not a point on a
