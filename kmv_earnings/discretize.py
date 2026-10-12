@@ -159,11 +159,40 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
     match_var_log     additionally calibrate ONE global scale factor by
                  simulation so the chain reproduces the continuous process's
                  var(log annual earnings). Costs two simulations.
+
+    Raises ValueError if either component's theoretical stationary variance
+    (lambda*sigma^2/(2*beta)) is infinite or implausibly large (> 5). A
+    near-random-walk component (beta -> 0) has no sensible ergodic
+    distribution to discretize: rescale_variance blows the grid out to match
+    an exploding target variance, match_var_log then compresses the whole
+    chain by a large factor to compensate, and the result is an artefact of
+    grid truncation, not of the estimated process -- concretely seen on a
+    nested-specs beta2=0 estimate, where this pushed the grid to +-80, then
+    crushed it back down by ~25x, concentrating ~12% of the ergodic mass on
+    the outermost grid points and inflating the chain's ergodic variance to
+    4-5.5 instead of reflecting anything in the data (2026-10-12). This
+    matters beyond the table: step 2's `death.py` draws newborns from the
+    chain's ergodic distribution, so a HANK model fed a chain like this would
+    confront households with a discretization artefact, not the estimated
+    income process, and could plausibly still "calibrate" on it. Pin beta2
+    (ErgodicVarConstraint, Sec 8b) rather than estimating or fixing it near
+    zero if a chain for step 2 is needed from such a process.
     """
     specs = {
         "1": (params["lambda1"], params["beta1"], params["sigma1"], n1),
         "2": (params["lambda2"], params["beta2"], params["sigma2"], n2),
     }
+    for name, (lam, beta, sig, n) in specs.items():
+        v = theoretical_stationary_var(lam, beta, sig) if beta > 0 else np.inf
+        if not np.isfinite(v) or v > 5.0:
+            raise ValueError(
+                f"component {name}: theoretical stationary variance "
+                f"lambda*sigma^2/(2*beta) = {v!r} is infinite or > 5 "
+                f"(lambda={lam}, beta={beta}, sigma={sig}) -- this process's "
+                "persistent component has no sensible ergodic distribution to "
+                "discretize. See this function's docstring."
+            )
+
     out = {}
     for name, (lam, beta, sig, n) in specs.items():
         grid, edges = component_grid_and_edges(n, sig, zmax_mult, curv)
