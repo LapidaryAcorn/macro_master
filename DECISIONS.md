@@ -1776,6 +1776,37 @@ extremes: `var_log_earns` pulls `var2` up from below, `var_Δ5y` pulls it
 down from above, and the canonical free estimate sits almost exactly where
 these two pulls balance.
 
+### 23b. The same profile for Germany: no interior minimum, a clean visual contrast
+
+`scripts/ger_beta2_profile.py`, same full budget, `var2 ∈ {0.3, 0.5, 0.91,
+1.5, 2.5}` (0.91 is GER's own canonical pin; GER's free/unrestricted
+estimate sits at `var2 = 7.24`, far to the right of this grid). Result:
+
+| var2 | OOS f | worst moment |
+|---|---|---|
+| 0.30 | 0.2912 | `var_log_earns` −53.2% |
+| 0.50 | 0.1398 | `var_log_earns` −35.6% |
+| 0.91 (KMV anchor, canonical) | 0.0354 | `var_log_earns` −14.7% |
+| 1.50 | 0.0098 | `var_Δ5y` +6.2% |
+| 2.50 | 0.0038 | `frac_d1_lt_20` −4.4% |
+
+**Monotonically decreasing across the entire tested range, with no interior
+minimum anywhere in `[0.3, 2.5]`** — a qualitatively different shape from
+Poland's clean V with a well-defined floor at `0.509` (§23a). The objective
+simply keeps improving as `var2` rises toward GER's own free-estimate value
+of `7.24`, exactly the signature of a weakly identified parameter: there is
+no point in this range where pushing `var2` higher starts to cost fit, so
+nothing in the profile itself pins down where `var2` "should" be — only the
+calibration-based argument for anchoring it at KMV's `0.9103` (§8b) does
+that work. `var2=0.91` reproduces the canonical GER pipeline's own OOS fit
+(`f ≈ 0.035`, STEP2_LOG/§8b) almost exactly despite warm-starting from the
+free estimate rather than KMV Table 3 — a useful independent cross-check
+that this profile script's methodology matches the main pipeline's.
+
+The combined PL-vs-GER picture (`output/pl_diagnostics/11_var2_profile.png`)
+makes the identification-strength contrast visible at a glance: Poland's
+curve has a floor; Germany's does not, in the range plotted.
+
 ---
 
 ## Open decisions (not yet settled)
