@@ -1524,54 +1524,98 @@ value for every country (USA 0.956→0.363, FRA 0.476→0.193, GER 0.645→0.163
 POL 0.508→0.284) — the single biggest driver of V1's 85-125x worse objective.
 But `var_d1` is barely touched (within 5-7% of data, all four countries), and
 `kurt_d1` is only mildly worse (USA 12.8→11.8, FRA 15.2→15.2 essentially
-unchanged, GER 17.8→18.1, POL 15.2→14.4). **Reading: the second component's
-job is not primarily to add leptokurtosis — a single well-tuned Poisson
-component already reproduces most of the 1-year kurtosis — its job is to
-carry long-run LEVEL dispersion that a single fast-decaying component cannot
-sustain over a 36-year panel.** `kurt_d5` and `var_d5` degrade moderately
-(the second component's own occasional jumps matter at the 5-year horizon),
-consistent with this reading.
+unchanged, GER 17.8→18.1, POL 15.2→14.4). `kurt_d5` and `var_d5` degrade
+moderately (the second component's own occasional jumps matter at the
+5-year horizon).
+
+**Reading (corrected 2026-10-12): one component cannot simultaneously fit
+level dispersion and short-run change dynamics.** The original framing here
+("the second component's job is not primarily to add leptokurtosis, its job
+is to carry level dispersion") overclaimed a structural division of labour
+that the evidence does not establish. With only 3 free parameters chasing 8
+equally-weighted moments, *which* moment gets sacrificed is an artefact of
+the SMM objective's equal weighting, not proof of what a second component is
+structurally "for". A differently-weighted objective (e.g. upweighting
+`var_log_earns`) could plausibly push V1 to sacrifice `kurt_d1` or `var_d5`
+instead and preserve the level variance better. State the finding as *what
+breaks under this particular objective*, not as a structural division of
+labour between the components.
 
 **V2 (deterministic arrival): uniformly catastrophic, and the kurtosis
 collapse is exact — a clean confirmation of KMV's footnote.** `kurt_d1` falls
 to **3.00-3.04 for all four countries**, the Gaussian value to three
-significant figures — removing genuine Poisson timing eliminates essentially
-all excess kurtosis, not just some of it. Every other moment is also far
-off (`frac_d1_lt_10` roughly a third of its data value everywhere). No
-moment survives this restriction. This is the sharpest possible
-confirmation that Poisson (as opposed to deterministic/AR(1)) arrival timing
-is doing real work, not just adding free parameters.
+significant figures. **This part is mechanical, not a finding** — summing
+Gaussian innovations every sub-period, with no Poisson gaps between them, is
+itself a Gaussian process by construction (a sum of Gaussians is Gaussian),
+so kurtosis landing at exactly 3 is guaranteed by the restriction's
+definition and confirms nothing beyond "the arithmetic was implemented
+correctly". **The informative part is everything else**: every other moment
+is also far off (`frac_d1_lt_10` roughly a third of its data value
+everywhere, `var_log_earns` similarly depressed) — i.e. deterministic arrival
+does not merely erase kurtosis while leaving the rest of the distribution
+intact, it degrades the *entire* moment profile. That breadth, not the
+(guaranteed) kurtosis collapse, is the evidence that genuine Poisson timing
+is doing real work.
 
-**V3 (`β₂ = 0`, random walk): costs almost nothing, for every country, not
-just GER — this generalizes §8b's finding well beyond the one country it was
-documented for.** OOS objective: USA 0.0058→0.0212 (3.6x), FRA 0.0013→0.0108
-(8.3x), POL 0.0037→0.0130 (3.5x), **GER 0.0025→0.0028 (1.1x, essentially
-free, as expected since GER's own free estimate already has `β₂≈0.0006`)**.
+**V3 (`β₂ = 0`, random walk): costs little in FIT for every country, but
+"little cost" hides a very different story for GER than for USA/FRA/POL.**
+OOS objective: USA 0.0058→0.0212 (3.6x), FRA 0.0013→0.0108 (8.3x), POL
+0.0037→0.0130 (3.5x), **GER 0.0025→0.0028 (1.1x — and per §9's Monte Carlo
+noise check, a 1.1x ratio at this objective scale is within the ~23%
+simulation-noise band, i.e. indistinguishable from "no cost at all")**.
 Every individual moment stays close to the free estimate for every country —
 `var_log_earns` within 1-3%, `kurt_d1` within 2-4%, fractions within a few
-percentage points. On an absolute scale these are all still "good fits" by
-this project's own standard (`f < 0.02` throughout), a world away from V1's
-`f ≈ 0.3-0.6` or V2's `f ≈ 2.2-2.7`.
+percentage points.
 
-**Synthesis with Task 4 (§21) — the two results independently point at the
-same conclusion from different directions.** §21's recovery exercise showed
-`β₂` cannot be *recovered* even from noise-free synthetic data for GER (and
-occasionally not for Poland). This section shows, separately, that *fixing*
-`β₂` to zero barely costs anything in *fit* for any of the four countries.
-Together: **`β₂` is only weakly disciplined by the 8-moment SMM design in
-general — GER is merely the most extreme, most visible case of a pattern
-that holds, to a good approximation, for all four countries.** This is a
-stronger and more general statement than §8b made in isolation, and belongs
-in the identification-limitations discussion alongside §21, not as a
-GER-specific footnote.
+**Correction (2026-10-12): "every moment close" hides a complete change of
+process for Poland, and the 3.5x penalty understates how costly V3 really
+is for PL.** Poland's V3 estimate sits at or against its parameter bounds:
+`λ₂ = 0.09999636` (bound `[0.001, 0.10]` — at the ceiling), `σ₂ = 0.2129`
+(bound `[0.20, 3.5]` — against the floor), and `β₁ = 0.50` where the free
+estimate has `β₁ = 2.85` — a more than 5-fold change in the *transitory*
+component, not just the persistent one. The optimiser is not finding "the
+same process with `β₂` turned off"; it is finding a **structurally
+different process** (a much slower-decaying transitory component, pushed up
+against two bounds on the persistent side) that happens to reproduce the 8
+moments about as well. An objective ratio that looks mild (3.5x) is
+therefore not a fair measure of how much this restriction costs Poland
+economically — the parameter vector itself has moved into a different
+region of the space entirely. USA and FRA's V3 estimates were not checked
+against their bounds here and should be before repeating this claim for
+them.
+
+**Synthesis with Task 4 (§21) — corrected (2026-10-12): the original
+synthesis here overstated the generalization and directly contradicted
+§21.** The original text claimed `β₂` is "only weakly disciplined... in
+general," with GER "merely the most extreme case of a pattern that holds...
+for all four countries." That is not what §21 shows: USA and FRA recovered
+`β₂` from synthetic data to within **1-4%** across every draw, and Poland
+recovered it to within **1%** in 3 of 4 draws. Those are well-identified
+results, not weak ones. The correct, narrower synthesis: **GER's `β₂` is
+genuinely unidentified** (§21: systematic recovery failure in 4/4 draws,
+with a known alternate basin; this section: a 1.1x fit cost that is itself
+noise-level). **USA, FRA, and Poland's `β₂` are identified** — §21 recovers
+them well — **but fixing `β₂` to zero still costs only a small absolute
+amount of fit for them too** (3.5-8.3x on an `f` that starts below 0.006),
+*and*, per the correction above, the parameter vector that achieves that
+small cost for Poland is economically a different process, not a
+free lunch. **Whether this small-in-objective-terms restriction matters for
+anything that is actually used downstream (the HANK calibration) is a
+separate question from whether it is "identified" in the SMM sense — §23
+is the test that actually answers it**, by profiling the ergodic variance
+`β₂` maps into rather than treating the fit cost as decisive on its own.
 
 **For the write-up.** Report the full 8-moment table
 (`output/nested_specs/nested_specs_comparison.csv`) as a figure or table —
-it is self-explanatory. The headline sentence: *the jump structure is
-essential (V2 fails completely, confirming KMV's AR(1) footnote), the second
-component is essential for level dispersion but not primarily for shape
-(V1), and the persistent component's decay rate is weakly identified across
-all four countries, not just Germany (V3, reinforcing §21).*
+it is self-explanatory. The headline sentence, corrected: *the jump
+structure is essential (V2 fails completely on every moment, not just
+kurtosis — confirming KMV's AR(1) footnote); one component cannot fit level
+dispersion and short-run dynamics simultaneously, though which one breaks is
+an artefact of equal SMM weighting (V1); and the persistent component's
+decay rate is weak-to-well identified depending on the country — genuinely
+unidentified for Germany, identified but cheap-to-restrict for USA/FRA/
+Poland, with Poland's "cheap" restriction masking a different process
+entirely (V3, see §23 for whether any of this matters for HANK outcomes).*
 
 ---
 
