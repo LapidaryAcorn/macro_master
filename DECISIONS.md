@@ -1619,6 +1619,106 @@ entirely (V3, see §23 for whether any of this matters for HANK outcomes).*
 
 ---
 
+## 23. Does beta2's weak fit-discipline actually matter for HANK outcomes? A Poland ergodic-variance profile (2026-10-12)
+
+**Motivation.** §21/§22 show `β₂` is weakly disciplined by the 8-moment SMM
+objective (unidentified for GER, cheap-to-restrict for USA/FRA/POL). But
+`β₂` itself never enters the HANK model — what enters, via the discretized
+chain's ergodic distribution and `death.py`'s newborn draws, is the
+persistent component's **ergodic variance**, `var2 = λ₂σ₂²/(2β₂)`. The
+question §22 could not answer on its own: does moving `var2` around, within
+the range the SMM objective is roughly indifferent to, actually change
+anything a HANK run would report? This is the test `scripts/pol_beta2_profile.py`
+and the follow-up `swap_death.py`/`impc_matrices.py` runs were built to
+answer directly, rather than inferring it from the fit cost alone.
+
+**Design.** Pin `var2` via `ErgodicVarConstraint`, re-estimate the other 5
+parameters at Poland's full canonical budget (50k-worker panel, DE
+maxiter=100/popsize=12, NM 400, warm-started at `output/pol/params.json`,
+`workers=10`), score OOS on the same 100k-worker/seed=987654 panel
+`nested_specs.py` uses, export the chain, then run `swap_death.py` (one-asset
++ β-heterogeneity + KMV death, jointly calibrated to `A=20`, `MPC=0.20`, SCF
+Lorenz — identical procedure to every other country in this project) and
+extract the iMPC sequence. Grid: `var2 ∈ {0.30, 0.40, 0.70, 0.9103}`; Poland's
+own canonical (free) estimate sits at `var2 = 0.5094` (ergodic sd 0.714).
+`0.9103` is KMV's own anchor — the same ergodic-variance target already
+pinned for USA and GER (§8b, and the USA pin in the open-decisions list) —
+chosen deliberately as the row that determines whether a PL-vs-USA
+comparison built on a common ergodic-variance anchor is clean.
+
+A reduced-budget version of this exercise, run in a separate investigation
+before this one, found `var2=0.30` breaks `var_log_earns` (model 0.375 vs
+data 0.508) and `var2=0.9103` breaks `var_Δ5y` (model 0.410 vs data 0.477),
+with every other moment close to data in both cases. **The full-budget run
+below reproduces those numbers almost exactly** (OOS `f`: `0.0753` vs the
+preliminary `0.075` at `var2=0.30`; `0.0310` vs `0.031` at `var2=0.9103`) —
+the reduced budget was already adequate for this particular question, and
+the full run adds the two middle points plus the HANK-side outcomes.
+
+**The full table:**
+
+| var2 | ergodic sd | OOS f | worst moments (rel. err) | converged | MPC | frac HtM | dβ | β_lo | decomp yr1 dir/indir | monetary dY impact | deficit dY impact |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.30 | 0.548 | 0.0753 | var_log_earns −26.3%, var_d1 +6.1%, frac_d1_lt_20 −3.8% | **NO** | 0.319 | 0.329 | **0.300 (bound)** | 0.700 | 19.4/79.9 | 2.546 | 0.524 |
+| 0.40 | 0.632 | 0.0203 | var_log_earns −13.0%, var_d5 +3.2%, frac_d1_lt_10 +3.1% | yes | 0.200 | 0.253 | 0.120 | 0.879 | 21.0/79.0 | 2.279 | 0.419 |
+| **0.509 (canonical, free)** | **0.714** | **0.0037** | (fit is good on all 8 moments, §18) | **yes** | **0.200** | **0.226** | **0.125** | **0.873** | **22.6/77.4** | **2.303** | **0.400** |
+| 0.70 | 0.837 | 0.0200 | var_d5 −8.9%, var_log_earns +6.7%, frac_d1_lt_10 +6.2% | yes | 0.200 | 0.181 | 0.107 | 0.893 | 19.6/80.5 | 2.387 | 0.480 |
+| 0.9103 (KMV anchor) | 0.954 | 0.0310 | var_d5 −13.5%, var_d1 +6.5%, var_log_earns +6.4% | **NO** | 0.333 | 0.340 | **0.300 (bound)** | 0.700 | 18.7/80.8 | 2.533 | 0.540 |
+
+**Headline result: the calibration fails at BOTH ends of the tested range,
+not just the low end — and KMV's own anchor is one of the failures.** At
+`var2 = 0.30` and `var2 = 0.9103`, `β`-heterogeneity (`dβ`) is driven to its
+upper bound (0.30) and `β_hi`/`β_lo` to the edge of their box, and the joint
+`(A, MPC, Lorenz)` calibration still **overshoots** the MPC target
+(0.319-0.333 instead of 0.200) rather than converging — a genuine
+infeasibility, not a slow convergence. Only `var2` roughly in `[0.4, 0.7]` —
+bracketing Poland's own data-implied value of `0.509` — supports a clean
+calibration. The canonical free estimate is also, by a wide margin, the
+best-fitting point in SMM terms (`f = 0.0037` vs `0.020-0.075` for every
+pinned alternative), consistent with §22: pinning `var2` away from its own
+optimum costs more than §22's bare `β₂=0` comparison suggested, once the
+*direction* of the restriction (too low vs too high) is allowed to vary
+rather than only checking `β₂=0`.
+
+**Direct answer to the motivating question: yes, it matters, and it matters
+specifically for the PL-vs-USA comparison.** `var2 = 0.9103` is exactly the
+ergodic-variance anchor imposed on USA and GER (§8b) for exactly the reason
+that their own free estimates do not support a clean calibration. Poland is
+different: its own free estimate (`var2 = 0.509`) **does** support a clean
+calibration — but forcing it onto the *same* anchor used for USA breaks that.
+So a PL-vs-USA comparison conducted by pinning both to a common
+ergodic-variance target is not available as a clean design for Poland the
+way it is already accepted as necessary for USA — Poland's clean calibration
+depends on using its own data-implied dispersion, not an imposed common one.
+**This means part of any PL-vs-USA difference in the main comparison
+reflects Poland running on its own data-implied dispersion while USA runs on
+an imposed one, and that has to be stated in the main text, not left as an
+appendix caveat** — exactly the risk flagged when this exercise was
+commissioned.
+
+**What moves across the profile, substantively.** `frac_htm` falls
+monotonically from `0.33` (var2=0.30, not converged) through `0.25`, `0.23`
+(canonical), `0.18` (var2=0.70) back up to `0.34` (var2=0.9103, not
+converged) — U-shaped, mirroring the OOS fit. The monetary-shock impact
+response and the direct/indirect decomposition stay qualitatively similar
+across all five rows (direct share 18.7-22.6%, "indirect dominates" survives
+everywhere) — the decomposition's *qualitative* conclusion is robust to
+where `var2` sits, even though the *calibration* is not. iMPC sequences
+(`hank_step2/results/impc_profile.png`) show the two non-converged points
+visibly overshoot the impact response (0.32-0.33 vs 0.20) while tracking
+each other closely beyond the impact quarter — consistent with the
+overshoot being concentrated in the contemporaneous MPC, not the whole
+sequence shape.
+
+**For the write-up.** This is the section that should accompany any
+PL-vs-USA HANK comparison, not §22 alone. State plainly: Poland's one-asset
++ death calibration is clean at its own data-implied ergodic dispersion and
+breaks (fails to converge) if forced onto USA's imposed anchor; this is
+itself a finding about how the countries differ, not a nuisance to be
+normalized away.
+
+---
+
 ## Open decisions (not yet settled)
 
 - ~~**If `β₁` again runs to its bound after widening to 8.0:** fix it and
