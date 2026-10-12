@@ -92,15 +92,29 @@ little information about how fast they decay.
 ## 3. Fit quality
 
 All four countries fit the eight target moments well on the continuous
-model — largest relative error under 5% almost everywhere (full tables:
-`output/{usa,fra,ger,pol}/table2.csv`; Stage-B fit plots:
-`output/pl_diagnostics/05_model_fit_*.png`). The discretized 75-state chain
-used for step 2 carries two known, documented gaps that are a property of
-discretizing a quarterly chain, not of the fit itself: the 1-year change
-variance comes in roughly 25–45% low (worst for GER and FRA, whose
-transitory components decay fastest), and the "fraction of tiny 1-year
-changes" comes in too high, because in many quarters the chain simply does
-not move at all (§8d, §15). Neither gap is specific to one country.
+model — largest relative error under 5% almost everywhere, **with one
+specific, known exception**: USA and Germany, the two countries whose
+persistent-component ergodic variance is *pinned* to KMV's anchor rather
+than freely estimated (§4.1, §4.3), undershoot `var_log_earns` by about
+**15%** on the continuous model (USA −16.0%, GER −14.6%; France and Poland,
+both freely estimated, are within 0.6% of data on this moment). This is a
+direct, expected consequence of the pin, not a separate fit problem — it is
+the fit cost of choosing a believable long-run ergodic dispersion over
+whatever value would best match the 36-year lifecycle-panel moment, and it
+should be reported alongside the pin itself rather than left implicit in
+the full fit tables (full tables: `output/{usa,fra,ger,pol}/table2.csv`;
+Stage-B fit plots: `output/pl_diagnostics/05_model_fit_*.png`).
+
+The discretized 75-state chain used for step 2 carries further known,
+documented gaps that are a property of discretizing a quarterly chain, not
+of the fit itself: the 1-year change variance comes in roughly 25–45% low
+(worst for GER and FRA, whose transitory components decay fastest), and the
+"fraction of tiny 1-year changes" comes in too high, because in many
+quarters the chain simply does not move at all (§8d, §15). A further,
+separately documented discretization gap — the 1-year change *kurtosis*
+coming in substantially *higher* in the discretized chain than in the
+continuous model (+18% to +41% depending on country) — is detailed in §15.
+None of these four gaps is specific to one country.
 
 ## 4. Country by country
 

@@ -936,6 +936,16 @@ demonstrates the choice was made on evidence rather than convention.
 - **1-year change variance ≈ 30% low in the discretized column** (§8d), because
   the estimated transitory component decays faster than the quarterly chain can
   resolve. Not a grid-resolution issue; resolution to be chosen in step 2.
+- **1-year change kurtosis comes in substantially *higher* in the
+  discretized column than in the continuous model — the opposite direction
+  from the variance gap above, and country-varying in size.** Measured
+  directly from `table2.csv` (discretized vs continuous, not vs data):
+  POL +18.0%, USA +22.0%, FRA +38.1%, GER +40.8%. Both this and the `var Δ1y`
+  shortfall trace to the same root cause — a quarterly chain under-resolving
+  a transitory component that mostly decays within a single quarter — but
+  show up as opposite-signed distortions in variance versus kurtosis of the
+  same moment. Not country-specific; present, with varying magnitude, in
+  every country's discretized chain.
 - **Residual kurtosis gap in validation** (14.5 simulated vs KMV's 16.5 at their
   own parameters), attributed to GKOS sample details not modelled here —
   principally the minimum-earnings threshold.
