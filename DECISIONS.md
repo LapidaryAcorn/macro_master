@@ -1480,6 +1480,78 @@ caveat on the point estimate's robustness, not as grounds for recalibrating.
 
 ---
 
+## 22. Task 2: nested specifications — what does the jump-drift structure add? (2026-10-12)
+
+**Design.** Three restrictions nested inside the full 6-parameter process,
+estimated for all four countries (`scripts/nested_specs.py`, DE-only, serious
+budget), compared on the full 8-moment fit against each country's own free
+6-parameter estimate:
+- **V1, single component** (3 free params): component 2 switched off
+  (`sigma2=0`), Poisson arrival kept for the surviving component.
+- **V2, deterministic arrival** (2 free params): V1 plus shocks arriving
+  every sub-period with probability 1 instead of at a Poisson rate — KMV's
+  own footnote nests a discrete-time AR(1) in logs as this limit.
+- **V3, `β₂ = 0`** (5 free params): persistent component made a pure random
+  walk (no mean reversion), everything else free.
+
+**V1 (single component): destroys the LEVEL variance specifically, leaves
+shape and 1-year dynamics almost untouched — not what a naive guess would
+predict.** `var_log_earns` collapses to roughly a third to a half of its data
+value for every country (USA 0.956→0.363, FRA 0.476→0.193, GER 0.645→0.163,
+POL 0.508→0.284) — the single biggest driver of V1's 85-125x worse objective.
+But `var_d1` is barely touched (within 5-7% of data, all four countries), and
+`kurt_d1` is only mildly worse (USA 12.8→11.8, FRA 15.2→15.2 essentially
+unchanged, GER 17.8→18.1, POL 15.2→14.4). **Reading: the second component's
+job is not primarily to add leptokurtosis — a single well-tuned Poisson
+component already reproduces most of the 1-year kurtosis — its job is to
+carry long-run LEVEL dispersion that a single fast-decaying component cannot
+sustain over a 36-year panel.** `kurt_d5` and `var_d5` degrade moderately
+(the second component's own occasional jumps matter at the 5-year horizon),
+consistent with this reading.
+
+**V2 (deterministic arrival): uniformly catastrophic, and the kurtosis
+collapse is exact — a clean confirmation of KMV's footnote.** `kurt_d1` falls
+to **3.00-3.04 for all four countries**, the Gaussian value to three
+significant figures — removing genuine Poisson timing eliminates essentially
+all excess kurtosis, not just some of it. Every other moment is also far
+off (`frac_d1_lt_10` roughly a third of its data value everywhere). No
+moment survives this restriction. This is the sharpest possible
+confirmation that Poisson (as opposed to deterministic/AR(1)) arrival timing
+is doing real work, not just adding free parameters.
+
+**V3 (`β₂ = 0`, random walk): costs almost nothing, for every country, not
+just GER — this generalizes §8b's finding well beyond the one country it was
+documented for.** OOS objective: USA 0.0058→0.0212 (3.6x), FRA 0.0013→0.0108
+(8.3x), POL 0.0037→0.0130 (3.5x), **GER 0.0025→0.0028 (1.1x, essentially
+free, as expected since GER's own free estimate already has `β₂≈0.0006`)**.
+Every individual moment stays close to the free estimate for every country —
+`var_log_earns` within 1-3%, `kurt_d1` within 2-4%, fractions within a few
+percentage points. On an absolute scale these are all still "good fits" by
+this project's own standard (`f < 0.02` throughout), a world away from V1's
+`f ≈ 0.3-0.6` or V2's `f ≈ 2.2-2.7`.
+
+**Synthesis with Task 4 (§21) — the two results independently point at the
+same conclusion from different directions.** §21's recovery exercise showed
+`β₂` cannot be *recovered* even from noise-free synthetic data for GER (and
+occasionally not for Poland). This section shows, separately, that *fixing*
+`β₂` to zero barely costs anything in *fit* for any of the four countries.
+Together: **`β₂` is only weakly disciplined by the 8-moment SMM design in
+general — GER is merely the most extreme, most visible case of a pattern
+that holds, to a good approximation, for all four countries.** This is a
+stronger and more general statement than §8b made in isolation, and belongs
+in the identification-limitations discussion alongside §21, not as a
+GER-specific footnote.
+
+**For the write-up.** Report the full 8-moment table
+(`output/nested_specs/nested_specs_comparison.csv`) as a figure or table —
+it is self-explanatory. The headline sentence: *the jump structure is
+essential (V2 fails completely, confirming KMV's AR(1) footnote), the second
+component is essential for level dispersion but not primarily for shape
+(V1), and the persistent component's decay rate is weakly identified across
+all four countries, not just Germany (V3, reinforcing §21).*
+
+---
+
 ## Open decisions (not yet settled)
 
 - ~~**If `β₁` again runs to its bound after widening to 8.0:** fix it and
