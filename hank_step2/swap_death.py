@@ -190,5 +190,13 @@ def run(cc):
 if __name__ == "__main__":
     ccs = [sys.argv[1].lower()] if len(sys.argv) > 1 else ["fra", "ger", "usa"]
     allR = {cc: run(cc) for cc in ccs}
-    with open(os.path.join(OUT, "swap_death_summary.json"), "w") as f:
+    summary_path = os.path.join(OUT, "swap_death_summary.json")
+    if os.path.exists(summary_path):
+        # merge, don't overwrite -- a single-country invocation must not
+        # silently drop every other country's entry (see DECISIONS.md,
+        # the close_step1_summary.json incident this mirrors).
+        existing = json.load(open(summary_path))
+        existing.update(allR)
+        allR = existing
+    with open(summary_path, "w") as f:
         json.dump(allR, f, indent=2)

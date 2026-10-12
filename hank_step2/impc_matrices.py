@@ -59,6 +59,11 @@ common_blocks = [production, real_ST_bonds, fiscal, capitalization, ex_post_r, n
 model_ha = sj.combine(common_blocks + [hh])
 
 VALID_CHAINS = ["usa", "fra", "ger", "pol", "pol_pre2009", "pol_post2009"]
+# Poland ergodic-variance profile (Sec 23): computed separately via
+# --extra, since two of these (0.3, 0.9103) do NOT converge in swap_death.py
+# -- the Jacobian is still informative at the (non-equilibrium) point the
+# optimiser landed at, but must be clearly flagged as such.
+PROFILE_CHAINS = ["pol_var2_0.3", "pol_var2_0.4", "pol_var2_0.7", "pol_var2_0.9103"]
 
 
 def load_chain(cc):
@@ -85,43 +90,56 @@ def compute_one(cc):
     return {
         "country": cc, "ergodic_var_log_e": v,
         "beta_ave": cal["beta_ave"], "dbeta": cal["dbeta"],
+        "converged": bool(cal["converged"]),
         "M_impc": [float(x) for x in M_col0],
         "mcap_impc": [float(x) for x in mcap_col0],
         "A": float(ss["A"]), "C": float(ss["C"]),
     }
 
 
-def main():
+def run_group(chains, json_name, png_name, title_suffix=""):
     out = {}
-    for cc in VALID_CHAINS:
+    for cc in chains:
         print(f"[impc] {cc} ...", flush=True)
         out[cc] = compute_one(cc)
+        flag = "" if out[cc]["converged"] else "  [NOT CONVERGED -- off-equilibrium point]"
         print(f"  M_impc[0:4] = {[round(x,4) for x in out[cc]['M_impc'][:4]]}  "
-              f"mcap_impc[0] = {out[cc]['mcap_impc'][0]:.4f}", flush=True)
+              f"mcap_impc[0] = {out[cc]['mcap_impc'][0]:.4f}{flag}", flush=True)
 
-    with open(os.path.join(RESULTS, "impc_matrices.json"), "w") as f:
+    with open(os.path.join(RESULTS, json_name), "w") as f:
         json.dump(out, f, indent=2, default=float)
 
-    # comparison plot, cf. Auclert-Rognlie-Straub Fig 1
-    style = {"usa": dict(color="#1b1b1b", marker="o", ls="-"),
-             "fra": dict(color="#4472c4", marker="s", ls="--"),
-             "ger": dict(color="#c0392b", marker="^", ls=":"),
-             "pol": dict(color="#1a9850", marker="D", ls="-."),
-             "pol_pre2009": dict(color="#8dc87a", marker="v", ls="--"),
-             "pol_post2009": dict(color="#0e5c2b", marker="P", ls=":")}
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
     for cc, d in out.items():
         q = np.arange(len(d["M_impc"]))
-        axes[0].plot(q, d["M_impc"], label=cc.upper(), lw=1.4, ms=4, **style[cc])
-        axes[1].plot(q, d["mcap_impc"], label=cc.upper(), lw=1.4, ms=4, **style[cc])
-    axes[0].set_title("Intertemporal MPC: dC_t / dZ_0\n(response to a date-0 income shock)")
-    axes[1].set_title("Capital-gains response: dC_t / dr_0\n(response to a date-0 interest-rate shock)")
+        ls = ":" if not d["converged"] else "-"
+        lbl = cc.upper() + ("" if d["converged"] else " (not converged)")
+        axes[0].plot(q, d["M_impc"], label=lbl, lw=1.4, ms=3, marker="o", ls=ls)
+        axes[1].plot(q, d["mcap_impc"], label=lbl, lw=1.4, ms=3, marker="o", ls=ls)
+    axes[0].set_title(f"Intertemporal MPC: dC_t / dZ_0{title_suffix}")
+    axes[1].set_title(f"Capital-gains response: dC_t / dr_0{title_suffix}")
     for ax in axes:
         ax.set_xlabel("quarters since shock"); ax.legend(fontsize=8); ax.axhline(0, color="grey", lw=0.6)
     axes[0].set_ylabel("consumption response")
     fig.tight_layout()
-    fig.savefig(os.path.join(RESULTS, "impc_comparison.png"), dpi=150)
-    print(f"\nSaved: {RESULTS}/impc_matrices.json, impc_comparison.png")
+    fig.savefig(os.path.join(RESULTS, png_name), dpi=150)
+    print(f"\nSaved: {RESULTS}/{json_name}, {png_name}")
+    return out
+
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--profile", action="store_true",
+                    help="compute the Poland ergodic-variance profile chains instead of the 6 canonical ones")
+    args = ap.parse_args()
+    if args.profile:
+        run_group(PROFILE_CHAINS, "impc_profile.json", "impc_profile.png",
+                  " (Poland ergodic-variance profile)")
+        return
+
+    out = run_group(VALID_CHAINS, "impc_matrices.json", "impc_comparison.png")
+    return out
 
 
 if __name__ == "__main__":
