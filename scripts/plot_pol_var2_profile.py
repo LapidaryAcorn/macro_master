@@ -48,8 +48,13 @@ band_hi = f_min * 1.20
 
 fig, ax = plt.subplots(figsize=(8.5, 5.5))
 ax.plot(var2, f, "o-", color="#1a9850", ms=8, lw=1.5, zorder=3, label="Poland")
+_offsets_used = []
 for v, fv, lab in pts:
-    ax.annotate(lab, (v, fv), textcoords="offset points", xytext=(8, 6), fontsize=8)
+    dy = 6
+    while any(abs(v - ov) < 0.03 and abs(dy - ody) < 10 for ov, ody in _offsets_used):
+        dy -= 14
+    _offsets_used.append((v, dy))
+    ax.annotate(lab, (v, fv), textcoords="offset points", xytext=(8, dy), fontsize=8)
 ax.axhline(band_hi, color="grey", ls="--", lw=1,
           label=f"+20% of the minimum ({f_min:.4f}) -> {band_hi:.4f}\n"
                 f"(Sec 9: Monte Carlo noise at this f-scale is ~23% of the mean)")

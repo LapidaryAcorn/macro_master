@@ -1750,8 +1750,16 @@ at exactly the canonical's own value (`0.5094`) and re-running the full
 profile pipeline, is the direct test of whether the pin itself (as opposed
 to pinning it at the *wrong* value) costs anything — it should reproduce
 the canonical free estimate closely if the constraint is genuinely
-non-binding there; pending at time of writing, to be added to the plot once
-computed.
+non-binding there.
+
+**Control point, run and confirmed (2026-10-12):** `OOS f = 0.00366` against
+the canonical free estimate's `0.00367` — indistinguishable — and the
+recovered parameters match the free estimate to 3-4 significant figures
+(`λ₁=0.16233` vs `0.16232`, `β₁=2.8455` vs `2.8462`, `σ₂=1.4008` vs
+`1.4010`, etc.). This validates both the profile pipeline itself (pinning a
+non-binding constraint reproduces the unconstrained optimum, as it should)
+and the choice of `f=0.0037` as the reference minimum for the noise band
+above. Now included in `output/pl_diagnostics/11_var2_profile.png`.
 
 **Among the pinned points, `var2=0.40` and `var2=0.70` remain
 noise-indistinguishable *from each other*** (`0.0203` vs `0.0200`, well

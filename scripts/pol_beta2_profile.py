@@ -105,10 +105,17 @@ def main():
     canonical_var2 = canonical["lambda2"] * canonical["sigma2"] ** 2 / (2 * canonical["beta2"])
     print(f"Canonical Poland var2 = {canonical_var2:.4f} (ergodic sd {canonical_var2**0.5:.4f})")
 
+    summary_path = "output/pol_var2_profile_summary.json"
     reports = {}
+    if os.path.exists(summary_path):
+        # merge, don't overwrite -- a partial --var2 run must not silently
+        # drop every other var2 value's entry (see DECISIONS.md, the
+        # close_step1_summary.json / swap_death_summary.json incidents this
+        # mirrors -- same bug, third occurrence).
+        reports = json.load(open(summary_path))["profiles"]
     for v in args.var2:
         reports[str(v)] = run_one(v, args.workers)
-        with open("output/pol_var2_profile_summary.json", "w") as f:
+        with open(summary_path, "w") as f:
             json.dump({"canonical_var2": canonical_var2, "profiles": reports}, f,
                       indent=2, default=float)
 
