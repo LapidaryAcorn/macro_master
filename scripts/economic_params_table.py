@@ -14,7 +14,9 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-COUNTRIES = ["usa", "fra", "ger", "pol"]
+# column label -> output dir. POL_V2 = Poland on the Sec 24 targets
+# (var_log_earns from GRID std_loginc); POL = the v1 (std_perm) estimate.
+COUNTRIES = {"USA": "usa", "FRA": "fra", "GER": "ger", "POL": "pol", "POL_V2": "pol_v2"}
 ROWS = [
     ("Transitory half-life (years)", lambda p: math.log(2) / (4 * p["beta1"])),
     ("Persistent half-life (years)", lambda p: math.log(2) / (4 * p["beta2"])),
@@ -33,7 +35,7 @@ ROWS = [
 
 
 def main():
-    params = {cc.upper(): json.load(open(f"output/{cc}/params.json")) for cc in COUNTRIES}
+    params = {lab: json.load(open(f"output/{d}/params.json")) for lab, d in COUNTRIES.items()}
     rows = []
     for label, fn in ROWS:
         rows.append({"quantity": label, **{cc: fn(p) for cc, p in params.items()}})

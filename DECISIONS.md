@@ -2095,6 +2095,125 @@ annual log earnings, sample [M]) and keep the 36-year simulation panel
 **Option 1** (`std_resid` + model moments on ages 25–55) goes to "Open
 decisions" as a robustness test to discuss with the supervisor.
 
+### 24.5 Report: Poland v1 vs v2 (2026-10-20)
+
+v1 = `targets/pol_grid.json` (`var_log_earns` = `std_perm²`, 0.5078), outputs
+`output/pol/`, `output/pol_var2_*` (tag `notatka-promotor-v1`).
+v2 = `targets/pol_grid_v2.json` (`var_log_earns` = `std_loginc²`, 0.7216),
+outputs `output/pol_v2/`. Same pipeline (`close_step1.py`: DE + TikTak,
+50k workers, DE maxiter 100 / popsize 12, NM 400, warm start at KMV Table 3;
+OOS on 100k workers, seed 987654). Profile `pol_beta2_profile.py --version v2`,
+same budget, warm start at the v2 canonical.
+
+**Parameters (canonical = DE in both versions)**
+
+| | v1 | v2 | change |
+|---|---|---|---|
+| λ₁ | 0.1623 | 0.1623 | 0% |
+| β₁ | 2.846 | 2.832 | −0.5% |
+| σ₁ | 1.979 | 2.001 | +1.1% |
+| λ₂ | 0.00877 | 0.00987 | +12.5% |
+| β₂ | 0.01690 | **0.00638** | **−62%** |
+| σ₂ | 1.401 | 1.209 | −13.7% |
+| ergodic sd z₂ (persistent) | 0.714 | **1.064** | +49% |
+| ergodic sd z₁+z₂ | 0.788 | 1.117 | +42% |
+| half-life, transitory | 0.061 yr (≈ 3 weeks) | 0.061 yr | — |
+| half-life, persistent | 10.3 yr | **27.2 yr** | ×2.65 |
+| OOS f (DE / TikTak) | 0.00367 / 0.00370 | **0.00728** / 0.00818 | ×2 |
+| DE vs TikTak, persistent component (max rel. diff) | 1.3% | 12.3% | still AGREE (< 25%) |
+| parameter at a bound | none | none | |
+
+The transitory component is unchanged to within 1%. The entire +0.21 of the
+level target was absorbed by the persistent component, almost entirely
+through slower mean reversion (β₂ fell by 62%), with partial compensation
+from a smaller σ₂ and slightly more frequent shocks. This is exactly the
+direction the v1 profile predicted (§23: `var_log_earns` disciplines var₂
+from below).
+
+**Fit to the 8 moments (OOS, rel. error model vs data)**
+
+| moment | data v1 | model v1 | err v1 | data v2 | model v2 | err v2 |
+|---|---|---|---|---|---|---|
+| var log earnings | 0.5078 | 0.5057 | −0.4% | **0.7216** | 0.7211 | −0.1% |
+| var Δ1y | 0.2595 | 0.2595 | 0.0% | 0.2595 | 0.2627 | +1.2% |
+| var Δ5y | 0.4765 | 0.4835 | +1.5% | 0.4765 | 0.4771 | +0.1% |
+| kurt Δ1y | 15.24 | 14.80 | −2.9% | 15.24 | 14.52 | **−4.7%** |
+| kurt Δ5y | 9.878 | 9.979 | +1.0% | 9.878 | 9.982 | +1.1% |
+| frac \|Δ1y\| < 10% | 0.4499 | 0.4710 | +4.7% | 0.4499 | 0.4798 | **+6.6%** |
+| frac \|Δ1y\| < 20% | 0.6694 | 0.6577 | −1.7% | 0.6694 | 0.6575 | −1.8% |
+| frac \|Δ1y\| < 50% | 0.8431 | 0.8395 | −0.4% | 0.8431 | 0.8363 | −0.8% |
+
+The doubling of OOS f comes almost entirely from two moments: `frac_d1_lt_10`
+(contribution 0.0022 → 0.0044) and `kurt_d1` (0.0008 → 0.0022). This misfit
+is **constant along the whole v2 profile** (frac +6.5–6.6%, kurt −4.0 to −4.7%
+for var₂ from 1.0 to 1.6, below), so it does not come from var₂. It comes from
+the new target as a whole: a persistent component with more frequent but
+smaller shocks (λ₂ ↑, σ₂ ↓) adds small annual changes, so the model
+overstates the share of |Δ1y| < 10% and lowers the kurtosis. With the
+transitory parameters essentially fixed, the optimiser cannot compensate.
+In absolute terms the fit is still good: no moment is off by more than 6.6%.
+
+**var₂ profile (`output/pol_v2/var2_profile_summary.json`, plot
+`output/pol_v2/11_var2_profile_v2.png`, with the GER curve and v1 faded)**
+
+| var₂ | OOS f | vs min | worst moment (excluding the constant frac10/kurt1 misfit) |
+|---|---|---|---|
+| 0.6 | 0.0540 | ×7.4 | `var_log_earns` −21.2% |
+| 0.8 | 0.0167 | ×2.3 | `var_log_earns` −8.8% (and `var_d5` +5.9%) |
+| 1.0 | 0.0080 | +9% | — (`var_log_earns` −2.1%, `var_d5` +2.2%) |
+| **1.132 (control)** | **0.00728** | 0 | identical to the free estimate (f to 5 digits, params ≤ 0.1%) |
+| 1.3 | 0.0079 | +9% | — (`var_d5` −2.0%) |
+| 1.6 | 0.0099 | +36% | `var_d5` −4.4% (and `var_d1` +3.1%) |
+
+Noise band (+20% of the minimum, §9): 0.0087. Points 1.0, 1.132 and 1.3 are
+inside it. 0.8 and 1.6 are outside. The control point reproduces the free
+estimate, so the pin does not bind at the optimum and the profile
+methodology holds (as in §23 for v1).
+
+**Worst moment on both sides of the profile.** Left (var₂ too low):
+`var_log_earns`, the same as in v1 (v1: −26% at 0.3, −13% at 0.4). Right
+(var₂ too high): `var_d5` (−2.0% at 1.3, −4.4% at 1.6), the same as in v1
+(v1: −8.9% at 0.7, −13.5% at 0.91). So the identifying structure has not
+changed: the level pulls var₂ up, the 5-year change pulls it down. Only the
+point where the two balance has shifted. In v2 the right slope is much
+**flatter** than in v1: going ×1.4 above the optimum costs +36% of f in v2,
+and in v1 (0.509 → 0.7) it cost ×5.5.
+
+**Answers to the three questions**
+
+1. **Does Poland still have the lowest long-run dispersion of the four
+   countries? No.** Ergodic sd of the persistent component: PL v2 **1.064**
+   vs FRA 0.903, USA 0.954 (pinned; free 1.22), GER 0.954 (pinned; free
+   2.69). Combined: PL v2 1.117 vs FRA 0.947, GER 0.979, USA 1.024. Among the
+   canonical estimates Poland now has the **highest** dispersion. It is still
+   below the free USA and GER estimates, but those are not canonical (§8b, S5).
+   In the data the ordering was always clear and v1 hid it: annual
+   `var_log_earns` PL 0.722 > GER 0.645 > FRA 0.476, behind only the USA
+   (0.956). The v1 conclusion that Poland is the most mean-reverting and has
+   the lowest dispersion (§18) was an artefact of the `std_perm` target and
+   should be withdrawn.
+2. **Do the data still clearly prefer a value below the KMV anchor (0.91)?
+   No. The direction is reversed.** The free optimum is var₂ = 1.13, above
+   0.91. The anchor itself was not computed on the v2 grid. Log-linear
+   interpolation between 0.8 and 1.0 gives f(0.91) ≈ 0.011 (+50% over the
+   minimum, outside the noise band), so the data mildly reject 0.91 *from
+   below* (`var_log_earns` −5% would be the worst moment). In v1, 0.91 was
+   rejected strongly from above (f ×8.4, `var_d5` −13.5%). If an exact
+   number is needed for the write-up, one run at `--var2 0.9103` (~35 min)
+   settles it.
+3. **Does the profile still have a clear floor? Yes, but wider and
+   asymmetric.** Two-sided: 0.8 (×2.3) and 1.6 (+36%) are outside the noise
+   band, and the floor is roughly var₂ ∈ [≈0.95, ≈1.4], i.e. ergodic sd
+   ≈ 0.97–1.18. Compared with v1, the floor is relatively wider (in v1 only
+   the canonical point was in the band; 0.4 and 0.7 were already ×5.5), and
+   the right slope is shallow. This is still the opposite of Germany, whose
+   curve has no minimum and keeps falling up to var₂ = 7.2. The PL/GER
+   contrast on the plot holds, though it is weaker than in v1.
+
+**Does this change the step-2 numbers?** Yes. See 24.6 (`swap_death`). v2
+`tables/10_economic_params.csv` has a new `POL_V2` column (the `POL` column =
+v1, left for comparison).
+
 ---
 
 ## Open decisions (not yet settled)
