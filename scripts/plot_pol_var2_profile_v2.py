@@ -32,20 +32,27 @@ for v, r in summary["profiles"].items():
     lab = "control (pinned at canonical)" if is_control else r["worst_moments"][0]["key"]
     pts.append((float(v), r["oos_f"], lab))
 pts.sort()
-var2 = np.array([p[0] for p in pts])
-f = np.array([p[1] for p in pts])
+main = [p for p in pts if not p[2].startswith("control")]
+ctrl = [p for p in pts if p[2].startswith("control")]
+var2 = np.array([p[0] for p in main])
+f = np.array([p[1] for p in main])
 band_hi = canon_f * 1.20
 
-fig, ax = plt.subplots(figsize=(8.5, 5.5))
+fig, ax = plt.subplots(figsize=(9, 5.5))
 ax.plot(var2, f, "o-", color="#1a9850", ms=8, lw=1.5, zorder=3,
         label="Poland v2 (var_log from std_loginc)")
-_used = []
-for v, fv, lab in pts:
-    dy = 6
-    while any(abs(v - ov) < 0.03 and abs(dy - ody) < 10 for ov, ody in _used):
-        dy -= 14
-    _used.append((v, dy))
-    ax.annotate(lab, (v, fv), textcoords="offset points", xytext=(8, dy), fontsize=8)
+for v, fv, _ in ctrl:
+    ax.plot(v, fv, "D", color="black", mfc="none", ms=12, zorder=4,
+            label=f"Poland v2 control (var2 pinned at {v:.3f})")
+for v, fv, lab in main:
+    if lab.startswith("canonical"):
+        txt, dy = "canonical v2 (free)", -16
+    elif fv <= band_hi:
+        continue   # in-band points all share worst = frac_d1_lt_10; labels would collide
+    else:
+        txt, dy = f"worst: {lab}", 8
+    ax.annotate(txt, (v, fv), textcoords="offset points", xytext=(6, dy), fontsize=7.5)
+ax.axvline(0.9103, color="black", ls="-.", lw=0.8, alpha=0.6, label="KMV anchor var2 = 0.91")
 ax.axhline(band_hi, color="grey", ls="--", lw=1,
            label=f"+20% of the v2 minimum ({canon_f:.4f}) -> {band_hi:.4f}")
 ax.axvline(canon_var2, color="#1a9850", ls=":", lw=1, alpha=0.6)
@@ -69,6 +76,7 @@ if os.path.exists(ger_path):
 ax.set_xlabel("var2 = lambda2 * sigma2^2 / (2 beta2)  (persistent-component ergodic variance)")
 ax.set_ylabel("OOS objective f")
 ax.set_yscale("log")
+ax.set_xscale("log")
 ax.set_title("Poland (v2 targets) vs Germany: OOS fit vs. the persistent "
              "component's ergodic variance\n(grey line = noise-indistinguishable "
              "threshold; faded = Poland v1)")
