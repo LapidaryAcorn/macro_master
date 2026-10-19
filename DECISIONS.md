@@ -1970,6 +1970,16 @@ start, §10). So it does not break cross-country comparability. It does mean
 `var_log_earns` is biased upward for all of them by the between-age variance.
 It is a separate methodological choice from the one below (see 24.2).
 
+### 24.2 Variant chosen: A
+
+`data/PL std_log_inc.csv` (GRID Poland, Male, 25–55, 2000–2020, columns
+`std_perm` and `std_loginc`) is in `data/`, so variant A applies.
+`targets/pol_grid_v2.json` = `targets/pol_grid.json` with
+`var_log_earns = mean_{2000..2020}(std_loginc²) = 0.72155`. The other seven
+moments are copied unchanged byte for byte. The window 2000–2020 is the same
+as the other seven Polish moments (§18). Results are insensitive to choosing
+2002–2020 instead (0.7221).
+
 ---
 
 ## Open decisions (not yet settled)
