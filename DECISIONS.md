@@ -2066,10 +2066,48 @@ similar size.** Consistent options:
 
 Recommendation and decision: in 24.4, after discussion.
 
+### 24.4 Decision: option 2, raw `std_log_inc` + 36-year panel for all countries (2026-10-19)
+
+**Decision.** Keep the level-dispersion target as raw `std_log_inc²` (GRID
+annual log earnings, sample [M]) and keep the 36-year simulation panel
+(§2) for **all four countries**. Poland uses `targets/pol_grid_v2.json`
+(24.2). FRA/GER/USA targets are unchanged.
+
+**Rationale.**
+1. **The two biases from 24.3 have similar magnitude and opposite signs, net
+   a few percent.** Raw data contain between-age variance that the model
+   lacks: +4.2% (PL), +6.7% (FRA), +8.7% (GER), +7.0% (USA) of the target.
+   The 36-year panel adds ages 56–60, which GRID does not have: +6.9% / +7.3%
+   / +7.3% / +4.1% of the model moment. The net mismatch is about −3 to +3%
+   depending on the country. That is within the Monte Carlo noise of the SMM
+   objective at this scale (§9) and smaller than the fit error on the worst
+   moment in every country.
+2. **Cross-country consistency is preserved.** All four countries use the
+   same GRID variable for the target and the same model moment. That was the
+   validity criterion from the start (§11/§12). Fixing just one of the two
+   biases, i.e. `std_resid` without trimming the panel, would *break* this
+   balance.
+3. **Option 1 means re-estimating all four countries,** and it changes the
+   change-moment definitions too (the 25–55 panel affects `var_d1`/`var_d5`
+   and kurtosis). That is a large cost for a gain of a few percent on one
+   moment. It belongs as a robustness test, not as the baseline.
+
+**Option 1** (`std_resid` + model moments on ages 25–55) goes to "Open
+decisions" as a robustness test to discuss with the supervisor.
+
 ---
 
 ## Open decisions (not yet settled)
 
+- **Robustness test for the level target (§24.3/§24.4): `std_resid` + model
+  moments on ages 25–55.** The baseline (§24.4) uses raw `std_log_inc²` and a
+  36-year panel; the two biases offset to within a few percent. The fully
+  consistent alternative is GRID `std_resid²` (`data/std resid.csv`, already
+  available for all four countries) together with model moments computed only
+  on panel columns for ages 25–55 (31 years). It requires re-estimating all four
+  countries. To discuss with the supervisor: is it worth it as a robustness test
+  in the thesis, or is the §24.3 table enough. Before running it, also confirm
+  GER's `nobs` inconsistency between exports (24.3).
 - ~~**If `β₁` again runs to its bound after widening to 8.0:** fix it and
   estimate the remaining five.~~ **Resolved** (§8): `β₁` settled interior at
   4.27 (FRA) / 5.34 (GER) / 2.75 (USA), objective sweeps confirm. No action.
