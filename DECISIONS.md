@@ -2214,10 +2214,78 @@ and in v1 (0.509 → 0.7) it cost ×5.5.
 `tables/10_economic_params.csv` has a new `POL_V2` column (the `POL` column =
 v1, left for comparison).
 
+### 24.6 Two-asset trigger on the v2 chain: Poland does NOT calibrate (2026-10-20)
+
+`hank_step2/swap_death.py pol_v2`: the same procedure as §20 (one-asset ARS +
+β heterogeneity + KMV death, joint calibration of (β_hi, dβ, ω) to A = 20,
+impact labor MPC = 0.20, SCF Lorenz), on the chain `output/pol_v2/`.
+Result: `hank_step2/results/swap_death_pol_v2.json` (+ `.log`; a `pol_v2` key
+merged into `swap_death_summary.json`, other keys byte-identical).
+
+| | target | **POL v2** | POL v1 (§20) | FRA | GER | USA |
+|---|---|---|---|---|---|---|
+| converged | — | **no**, cost 0.0087 | yes, resid ~1e-12 | yes | yes | no |
+| MPC (labor, impact) | 0.20 | **0.071** | 0.200 | 0.200 | 0.200 | 0.024–0.029 |
+| frac at borrowing constraint | — | **0.063** | 0.226 | 0.225 | 0.250 | ~0.01 |
+| dβ (heterogeneity spread) | — | 0.150 | 0.125 | 0.093 | 0.067 | →0 |
+| β_lo | — | 0.843 | 0.873 | 0.905 | 0.932 | — |
+| ω (share of patient type) | — | **0.934** | 0.691 | 0.699 | 0.666 | 0.592 |
+| decomp yr1 direct/indirect | — | **35/65** | 22.6/77.4 | 25.5/74.5 | 24/76 | degenerate |
+| monetary dY impact (base 2.41) | — | **2.06 (−14.5%)** | 2.30 (−4.5%) | 2.29 | 2.33 | 1.81–1.85 |
+| ergodic var(log e), chain | — | **1.381** | 0.721 | 1.040 | 1.044 | 1.191 |
+
+**This is not a local minimum.** The solver stopped inside the box: dβ = 0.15
+vs a limit of 0.30, ω = 0.93 vs 0.98. So the calibration step alone was
+rerun from 6 more starts (`hank_step2/swap_death_multistart.py`,
+`results/swap_death_pol_v2_multistart.json`). They included the converged
+solutions for PL v1 and for var₂ = 0.7 and the corners of the box. **All 9
+starts (3 + 6) end on the same ridge:** β_hi = 0.9930, ω = 0.927–0.934,
+dβ = 0.105–0.150 (flat in dβ), with an MPC residual of −0.129 to −0.142,
+A = 20 matched to 0.003 and Lorenz to −0.02 to −0.03. In this model,
+the v2 chain can deliver at most MPC ≈ 0.07 while keeping A and Lorenz.
+
+**Mechanism (same as GRID-USA, STEP2_LOG §S4/§S5).** Ergodic variance of
+income in the chain is 1.38. That is about double v1 and a third above
+FRA/GER. The persistent component's half-life is 27 years. With such large
+and durable income risk, precautionary saving pushes almost everyone away
+from the borrowing constraint (6% vs 23% in v1). The calibration tries to
+recreate a hand-to-mouth group with an impatient type, but to hit A = 20 and
+Lorenz it must keep that type small (1 − ω = 7%). MPC does not get above
+0.07. The monetary transmission is weaker (−14.5% vs the baseline) and the
+indirect share drops to 65%. This is the USA failure mode, though milder
+(MPC 0.07 vs 0.03).
+
+**Note: the dependence on var₂ is non-monotonic.** On the v1 targets, the
+var₂ = 0.91 chain (ergodic var 1.08) failed in the *opposite* direction:
+dβ at the 0.30 limit, MPC 0.33, HtM 0.34 (§23). Polish chains therefore
+calibrate in a window of ergodic variance roughly between 0.72 (v1, OK) and
+0.95 (v1 var₂ = 0.7, OK) — v1 var₂ = 0.91 already overshoots, while v2 at
+1.38 undershoots. These are chains with different targets, so they are not
+one comparative static. The v2 profile floor, however, covers var₂ ∈
+[≈0.95, ≈1.4]. **Untested: whether a chain from the lower part of the v2
+floor (`output/pol_v2/var2_1.0/`, OOS f +9% over the minimum, inside the
+noise band) calibrates.** One `swap_death.py` run (~2 h) answers this, and it
+matters for the two-asset decision (below).
+
+**Consequence.** The §20 conclusion ("Poland calibrates cleanly, one-asset +
+death is enough") **applies to the v1 targets and does not hold for v2.**
+The two-asset question is back in "Open decisions".
+
 ---
 
 ## Open decisions (not yet settled)
 
+- **One-asset vs two-asset for Poland — REOPENED 2026-10-20 (§24.6).** On the
+  v2 chain (`var_log_earns` from `std_loginc`) the one-asset model + death
+  does **not** calibrate: MPC max ≈ 0.07 vs 0.20, HtM 6%. Robust to 9 starting
+  points. The §20 "RESOLVED" (below) applies to the v1 targets. Before
+  deciding on two-asset (STEP2_LOG §S6, ≈ 2 weeks): (i) check whether a chain
+  from the v2 profile floor with lower var₂ (`output/pol_v2/var2_1.0/`, inside
+  the noise band) calibrates; if so, there is a defensible one-asset route with
+  var₂ chosen within the statistical uncertainty, which would need a
+  justification for the supervisor; (ii) a question for the supervisor: is the
+  same "USA = sensitivity" treatment acceptable for Poland, the main country of
+  the thesis (no — Poland is the core of the thesis, so two-asset or (i)).
 - **Robustness test for the level target (§24.3/§24.4): `std_resid` + model
   moments on ages 25–55.** The baseline (§24.4) uses raw `std_log_inc²` and a
   36-year panel; the two biases offset to within a few percent. The fully
@@ -2276,6 +2344,8 @@ v1, left for comparison).
 - **Chain size for step 2:** 75 states is the current default; may need to drop
   to 33 if the model solve is too slow.
 - ~~**One-asset vs two-asset model in step 2 — Poland is the trigger.**~~
+  **[REOPENED 2026-10-20 — see the first item in this list and §24.6; the
+  'resolved' below holds only for the v1 std_perm targets.]**
   **RESOLVED 2026-10-12, see §20: Poland calibrates cleanly, one-asset + death
   is sufficient.** The rule-of-thumb threshold below (`β₁ ≲ 3`) would have
   pointed the wrong way for Poland (`β₁ = 2.85`) — the actual `swap_death.py`
