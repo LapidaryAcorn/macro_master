@@ -47,6 +47,9 @@ COUNTRIES = {
     "FRA": "targets/fra_grid.json",
     "GER": "targets/ger_grid.json",
     "POL": "targets/pol_grid.json",
+    # Sec 24: Poland with var_log_earns from GRID std_loginc (annual log
+    # earnings, as for FRA/GER/USA) instead of std_perm. Writes output/pol_v2/.
+    "POL_V2": "targets/pol_grid_v2.json",
 }
 PERSISTENT = ("lambda2", "beta2", "sigma2")
 
@@ -75,7 +78,7 @@ COUNTRY_FIXED: dict[str, dict] = {}
 # open item on whether a window-matched Polish re-estimate is also wanted.
 COUNTRY_WINDOW = {
     "USA": "2001-2016", "FRA": "2001-2016", "GER": "2001-2016",
-    "POL": "2000-2020",
+    "POL": "2000-2020", "POL_V2": "2000-2020",
 }
 
 
@@ -286,6 +289,8 @@ def main():
     ap.add_argument("--de-popsize", type=int, default=12)
     ap.add_argument("--n-sobol", type=int, default=512)
     ap.add_argument("--n-local", type=int, default=10)
+    ap.add_argument("--summary", default=None,
+                    help="summary json path (default <outroot>/close_step1_summary.json)")
     args = ap.parse_args()
 
     t_all = time.time()
@@ -310,7 +315,7 @@ def main():
         print(f"   free param at a bound: "
               f"{'YES -> widen bounds' if r['any_at_bound'] else 'no'}")
         print(f"   canonical params: {fmt_params(r['params_canonical'])}")
-    summary_path = os.path.join(args.outroot, "close_step1_summary.json")
+    summary_path = args.summary or os.path.join(args.outroot, "close_step1_summary.json")
     if os.path.exists(summary_path):
         # merge, don't overwrite -- a partial --countries run (e.g. one
         # country re-estimated alone) must not silently drop the others.

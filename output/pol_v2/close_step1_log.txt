@@ -1,0 +1,59 @@
+==============================================================================
+POL_V2   targets: targets/pol_grid_v2.json
+==============================================================================
+targets: var_log_earns=0.7216  var_d1=0.2595  var_d5=0.4765  kurt_d1=15.24  kurt_d5=9.878  frac_d1_lt_10=0.4499  frac_d1_lt_20=0.6694  frac_d1_lt_50=0.8431
+
+[DE] differential evolution ...
+[DE] done in 1766s   in-sample f=0.00780
+[DE] lambda1=0.16233  beta1=2.8316  sigma1=2.0014  lambda2=0.0098722  beta2=0.006376  sigma2=1.209
+
+[TikTak] Sobol + sequential local ...
+[TikTak] done in 2041s   in-sample f=0.00853
+[TikTak] lambda1=0.1528  beta1=2.6677  sigma1=2.0259  lambda2=0.010888  beta2=0.0055907  sigma2=1.1207
+
+[OOS] fresh-seed objective  DE=0.00728   TikTak=0.00818
+[OOS] canonical estimate: DE
+
+[persistent component] DE vs TikTak  (free params compared; locked params report the value implied by the two solutions)
+  lambda2  DE=0.0098722   TikTak=0.010888   rel.diff=9.3%
+  beta2    DE=0.006376   TikTak=0.0055907   rel.diff=12.3%
+  sigma2   DE=1.209   TikTak=1.1207   rel.diff=7.3%
+  -> AGREE on the free persistent-component parameters (max rel.diff 12.3%; threshold 25%)
+  ergodic sd(z2) [DE] = 1.064  (KMV: 0.954)
+  ergodic sd(z2) [TikTak] = 1.106  (KMV: 0.954)
+  ergodic sd(z2) [canonical] = 1.064  (KMV: 0.954)
+
+[bounds] canonical estimate vs search box (log-scale position)
+  lambda1     0.16233  in [0.01, 0.6]  pos=0.68
+  beta1        2.8316  in [0.05, 8]  pos=0.80
+  sigma1       2.0014  in [0.2, 3.5]  pos=0.80
+  lambda2   0.0098722  in [0.001, 0.1]  pos=0.50
+  beta2      0.006376  in [0.0001, 0.2]  pos=0.55
+  sigma2        1.209  in [0.2, 3.5]  pos=0.63
+  -> OK: no free parameter at a bound.
+
+[fit] 8-moment table (canonical estimate, OOS panel)
+  moment                       data      model   rel.err
+  Variance: annual log earns     0.7216     0.7211    -0.1%
+  Variance: 1yr change       0.2595     0.2627     1.2%
+  Variance: 5yr change       0.4765     0.4771     0.1%
+  Kurtosis: 1yr change        15.24      14.52    -4.7%
+  Kurtosis: 5yr change        9.878      9.982     1.1%
+  Frac 1yr change < 10%      0.4499     0.4798     6.6%
+  Frac 1yr change < 20%      0.6694     0.6575    -1.8%
+  Frac 1yr change < 50%      0.8431     0.8363    -0.8%
+  sum of squared rel. errors (OOS): 0.00728
+
+[outputs] regenerating table2 + Markov chain (match_var_log=True) ...
+  chain: {"n_states": 75, "rows_sum_to_1": true, "mean_earnings": 1.0000000000000004}
+  component 1: chain_var=0.1272 theory_var=0.1148 n_states=5
+  component 2: chain_var=1.254 theory_var=1.132 n_states=15
+                      Moment      Data  Model Estimated  Model Discretized
+  Variance: annual log earns  0.721552            0.720              0.722
+        Variance: 1yr change  0.259527            0.262              0.176
+        Variance: 5yr change  0.476531            0.477              0.409
+        Kurtosis: 1yr change 15.239548           14.477             17.066
+        Kurtosis: 5yr change  9.877753            9.972             10.439
+       Frac 1yr change < 10%  0.449912            0.481              0.658
+       Frac 1yr change < 20%  0.669364            0.658              0.676
+       Frac 1yr change < 50%  0.843053            0.837              0.831

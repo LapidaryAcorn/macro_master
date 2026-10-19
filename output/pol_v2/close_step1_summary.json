@@ -1,0 +1,162 @@
+{
+  "POL_V2": {
+    "country": "POL_V2",
+    "targets_path": "targets/pol_grid_v2.json",
+    "targets": {
+      "var_log_earns": 0.7215520714728406,
+      "var_d1": 0.2595273473993098,
+      "var_d5": 0.47653114888831416,
+      "kurt_d1": 15.239547634124756,
+      "kurt_d5": 9.877752840518951,
+      "frac_d1_lt_10": 0.449911847654758,
+      "frac_d1_lt_20": 0.669363857217435,
+      "frac_d1_lt_50": 0.8430527542358931
+    },
+    "restricted": {
+      "fixed": [],
+      "derived": []
+    },
+    "params_de": {
+      "lambda1": 0.16232767411233068,
+      "beta1": 2.831573630998043,
+      "sigma1": 2.0014268878251116,
+      "lambda2": 0.00987221968415554,
+      "beta2": 0.006376007763477793,
+      "sigma2": 1.2090308186245113
+    },
+    "params_tiktak": {
+      "lambda1": 0.1527954916355277,
+      "beta1": 2.6676620670911984,
+      "sigma1": 2.0258900391511467,
+      "lambda2": 0.010888336481875063,
+      "beta2": 0.005590685717390619,
+      "sigma2": 1.1207015574672912
+    },
+    "params_canonical": {
+      "lambda1": 0.16232767411233068,
+      "beta1": 2.831573630998043,
+      "sigma1": 2.0014268878251116,
+      "lambda2": 0.00987221968415554,
+      "beta2": 0.006376007763477793,
+      "sigma2": 1.2090308186245113
+    },
+    "winner": "DE",
+    "in_sample_f": {
+      "de": 0.0077968355888598725,
+      "tiktak": 0.008530606633736684
+    },
+    "oos_f": {
+      "de": 0.00727754625801793,
+      "tiktak": 0.008182634727493492
+    },
+    "persistent_component": {
+      "lambda2": {
+        "de": 0.00987221968415554,
+        "tiktak": 0.010888336481875063,
+        "reldiff": 0.09332158309131713,
+        "locked": false
+      },
+      "beta2": {
+        "de": 0.006376007763477793,
+        "tiktak": 0.005590685717390619,
+        "reldiff": 0.12316830142296124,
+        "locked": false
+      },
+      "sigma2": {
+        "de": 1.2090308186245113,
+        "tiktak": 1.1207015574672912,
+        "reldiff": 0.0730579070413693,
+        "locked": false
+      }
+    },
+    "persistent_agree": true,
+    "ergodic_sd_z2": {
+      "canonical": 1.0637886697864285,
+      "kmv": 0.954122633627355
+    },
+    "bounds": [
+      {
+        "param": "lambda1",
+        "value": 0.16232767411233068,
+        "lo": 0.01,
+        "hi": 0.6,
+        "log_frac": 0.6807028174417097,
+        "locked": false,
+        "at_bound": false
+      },
+      {
+        "param": "beta1",
+        "value": 2.831573630998043,
+        "lo": 0.05,
+        "hi": 8.0,
+        "log_frac": 0.7953550027998361,
+        "locked": false,
+        "at_bound": false
+      },
+      {
+        "param": "sigma1",
+        "value": 2.0014268878251116,
+        "lo": 0.2,
+        "hi": 3.5,
+        "log_frac": 0.8047297790567746,
+        "locked": false,
+        "at_bound": false
+      },
+      {
+        "param": "lambda2",
+        "value": 0.00987221968415554,
+        "lo": 0.001,
+        "hi": 0.1,
+        "log_frac": 0.49720740552423076,
+        "locked": false,
+        "at_bound": false
+      },
+      {
+        "param": "beta2",
+        "value": 0.006376007763477793,
+        "lo": 0.0001,
+        "hi": 0.2,
+        "log_frac": 0.5466623567671707,
+        "locked": false,
+        "at_bound": false
+      },
+      {
+        "param": "sigma2",
+        "value": 1.2090308186245113,
+        "lo": 0.2,
+        "hi": 3.5,
+        "log_frac": 0.6286270774125873,
+        "locked": false,
+        "at_bound": false
+      }
+    ],
+    "any_at_bound": false,
+    "moments_canonical_oos": {
+      "var_log_earns": 0.7210659080083581,
+      "var_d1": 0.26265885522510546,
+      "var_d5": 0.4770768739337832,
+      "kurt_d1": 14.51996291415091,
+      "kurt_d5": 9.98227029623894,
+      "frac_d1_lt_10": 0.479796,
+      "frac_d1_lt_20": 0.6575348571428571,
+      "frac_d1_lt_50": 0.8362845714285714
+    },
+    "chain_diagnostics": {
+      "1": {
+        "chain_var": 0.1272016369538434,
+        "theory_var": 0.11481910859725654,
+        "n_states": 5
+      },
+      "2": {
+        "chain_var": 1.2536873686957686,
+        "theory_var": 1.1316463339659788,
+        "n_states": 15
+      },
+      "combined": {
+        "n_states": 75,
+        "rows_sum_to_1": true,
+        "mean_earnings": 1.0000000000000004
+      }
+    }
+  }
+}

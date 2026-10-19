@@ -27,6 +27,12 @@ from below by var_log_earns and from above by var_Delta5y. This script
 re-runs it at full budget to confirm (or correct) that reading.
 
 Usage: python scripts/pol_beta2_profile.py [--var2 0.30 0.40 0.70 0.9103] [--workers 10]
+
+Sec 24 (v2 targets, var_log_earns from GRID std_loginc):
+    python scripts/pol_beta2_profile.py --version v2 --var2 0.30 0.40 0.70 0.9103 <canonical v2 var2>
+reads targets/pol_grid_v2.json, warm-starts at output/pol_v2/params.json and
+writes output/pol_v2/var2_<v>/ + output/pol_v2/var2_profile_summary.json.
+The default (--version v1) paths are unchanged.
 """
 from __future__ import annotations
 
@@ -44,8 +50,15 @@ from kmv_earnings.simulate import MOMENT_ORDER, MOMENT_LABELS, model_moments
 from kmv_earnings.estimate import estimate, save_params, load_params, ErgodicVarConstraint
 from kmv_earnings.discretize import discretize_process, export_chain
 
-TARGETS_PATH = "targets/pol_grid.json"
-CANONICAL_PARAMS_PATH = "output/pol/params.json"
+VERSIONS = {
+    "v1": dict(targets="targets/pol_grid.json", canonical="output/pol/params.json",
+               outdir="output/pol_var2_{v}", summary="output/pol_var2_profile_summary.json"),
+    "v2": dict(targets="targets/pol_grid_v2.json", canonical="output/pol_v2/params.json",
+               outdir="output/pol_v2/var2_{v}", summary="output/pol_v2/var2_profile_summary.json"),
+}
+TARGETS_PATH = VERSIONS["v1"]["targets"]
+CANONICAL_PARAMS_PATH = VERSIONS["v1"]["canonical"]
+OUTDIR_FMT = VERSIONS["v1"]["outdir"]
 EST_SIM_KWARGS = dict(n_workers=50_000, n_years_keep=36)
 OOS_SIM_KWARGS = dict(n_workers=100_000, n_years_keep=36, seed=987654)
 DEFAULT_VAR2S = [0.30, 0.40, 0.70, 0.9103]
@@ -61,7 +74,7 @@ def run_one(var2: float, workers: int) -> dict:
     targets = json.load(open(TARGETS_PATH))
     x0 = load_params(CANONICAL_PARAMS_PATH)
     derive = {"beta2": ErgodicVarConstraint("2", target_var=var2)}
-    outdir = f"output/pol_var2_{var2}"
+    outdir = OUTDIR_FMT.format(v=var2)
     os.makedirs(outdir, exist_ok=True)
 
     print(f"[var2={var2}] estimating (5 free params, beta2 pinned) ...", flush=True)
@@ -99,13 +112,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--var2", nargs="+", type=float, default=DEFAULT_VAR2S)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
+    ap.add_argument("--version", choices=list(VERSIONS), default="v1")
     args = ap.parse_args()
+
+    global TARGETS_PATH, CANONICAL_PARAMS_PATH, OUTDIR_FMT
+    cfg = VERSIONS[args.version]
+    TARGETS_PATH, CANONICAL_PARAMS_PATH, OUTDIR_FMT = cfg["targets"], cfg["canonical"], cfg["outdir"]
 
     canonical = load_params(CANONICAL_PARAMS_PATH)
     canonical_var2 = canonical["lambda2"] * canonical["sigma2"] ** 2 / (2 * canonical["beta2"])
     print(f"Canonical Poland var2 = {canonical_var2:.4f} (ergodic sd {canonical_var2**0.5:.4f})")
 
-    summary_path = "output/pol_var2_profile_summary.json"
+    summary_path = cfg["summary"]
     reports = {}
     if os.path.exists(summary_path):
         # merge, don't overwrite -- a partial --var2 run must not silently
