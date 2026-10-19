@@ -2271,6 +2271,32 @@ matters for the two-asset decision (below).
 death is enough") **applies to the v1 targets and does not hold for v2.**
 The two-asset question is back in "Open decisions".
 
+### 24.7 Do the bootstrap, recovery, nested specs and sub-period split need rerunning for Poland v2? (assessment, not run)
+
+**Short answer: yes, all four.** Marking them as "for the previous version"
+is enough for the supervisor note *for now*, but none of them can carry over
+to v2 as a result. The parameter shift is not small, and in two cases v1
+itself depended on `std_perm`.
+
+| exercise | v1 result (§) | why it does not carry over to v2 | priority / cost |
+|---|---|---|---|
+| **Sub-period split pre/post 2009** (§20 Q2, `pol_regime_split.py`) | the two-asset answer is the same in both sub-windows | `targets/pol_grid_{pre,post}2009.json` are built from `dane grid PL.csv`, so `var_log_earns` = `std_perm²` (0.541 / 0.488). **The same error as in the full window.** The conclusion ("calibrates in both") also cannot hold, since the full sample now does not calibrate (24.6). | **1**, ~2 × (1 h estimation + 2 h swap_death) |
+| **Nested specs** (§22, `nested_specs.py`) | V3 (β₂ = 0, random walk) is clearly worse: OOS f 0.0130 vs 0.0037 (×3.5) | v2 moves β₂ toward zero (half-life 10 → 27 years). The key conclusion that the persistent component must mean-revert may weaken or flip. **This is the test most sensitive to exactly this change.** | **2**, ~4 estimations ≈ 2–3 h |
+| **Recovery** (§21, `recovery_exercise.py`) | β₂ recovered with mean bias −25% and a wide range (min −99%) — identification already weak in v1 | recovery tests identification **at a given point**. The v2 point is in a different region (β₂ ×0.38, λ₂ +12%, σ₂ −14%) and moves toward the weakly identified German region (§8b). A v1 result says nothing about v2, and β₂ identification is likely worse there. | **3**, as in §21 |
+| **Bootstrap SEs** (§19, `bootstrap_se.py`) | β₂ 95% CI [0.0150, 0.0193], λ₂ [0.0082, 0.0096], σ₂ [1.383, 1.452] | **The v2 point lies far outside the v1 CIs** for all three persistent-component parameters (β₂ = 0.0064, λ₂ = 0.0099, σ₂ = 1.209), so the v1 SEs describe a different estimate. They also need a new year panel: `output/pl_diagnostics/year_panel_pol.csv` has `var_log` from `std_perm` (empty for 2000–2001). The panel must be rebuilt from `std_loginc` before the bootstrap. | **4**, the most expensive (200 reps on a reduced budget, as in §19) |
+
+The transitory component (λ₁, β₁, σ₁) has not moved (≤ 1%), so the v1
+conclusions about it (bootstrap SEs, recovery of β₁/σ₁) are **probably** still
+valid. But they cannot be reported without a rerun, because the parameters
+are estimated jointly.
+
+**Recommended order:** (0) `swap_death` on `output/pol_v2/var2_1.0/` (24.6,
+~2 h), because it decides whether Poland goes to two-asset, and that frames
+everything else. Then (1) sub-period split, (2) nested specs, (3) recovery,
+(4) bootstrap. In the supervisor note: the §19–§23 Polish results are marked
+as "v1 targets (`std_perm`), superseded — v2 rerun in progress", with §24 as
+the explanation.
+
 ---
 
 ## Open decisions (not yet settled)
@@ -2283,9 +2309,10 @@ The two-asset question is back in "Open decisions".
   from the v2 profile floor with lower var₂ (`output/pol_v2/var2_1.0/`, inside
   the noise band) calibrates; if so, there is a defensible one-asset route with
   var₂ chosen within the statistical uncertainty, which would need a
-  justification for the supervisor; (ii) a question for the supervisor: is the
-  same "USA = sensitivity" treatment acceptable for Poland, the main country of
-  the thesis (no — Poland is the core of the thesis, so two-asset or (i)).
+  justification for the supervisor; (ii) a question for the supervisor: is
+  something like the GRID-USA treatment ("documented sensitivity") acceptable
+  for Poland? Poland is the main country of the thesis, so probably not — to
+  be confirmed.
 - **Robustness test for the level target (§24.3/§24.4): `std_resid` + model
   moments on ages 25–55.** The baseline (§24.4) uses raw `std_log_inc²` and a
   36-year panel; the two biases offset to within a few percent. The fully
