@@ -1980,6 +1980,92 @@ moments are copied unchanged byte for byte. The window 2000–2020 is the same
 as the other seven Polish moments (§18). Results are insensitive to choosing
 2002–2020 instead (0.7221).
 
+### 24.3 Between-age variance: `std_resid²` vs `std_log_inc²`, all four countries
+
+**Status of v2 at this point.** The v2 estimate (`output/pol_v2/`, pt 3) is
+done: DE canonical, OOS f = 0.0073, var₂ = 1.13. The var₂ profile on v2
+targets (pt 4) was **stopped** while its first point was still running, and
+nothing from it was kept. If the level target changes again (below), the
+profile and possibly the pt 3 estimate are stale. So pt 4 waits for this
+decision.
+
+**Data.** `data/std resid.csv`: GRID `std_resid` (Codebook p. 40: standard
+deviation of the residual from a year-specific regression of log annual
+earnings on age dummies, by sex). Male, 25–55, all four countries. The
+file codes Germany as `DEU`. `std_log_inc` comes from the same sources as
+the targets. Windows are the target windows: FRA/GER/USA 2001–2016, PL
+2000–2020. Between-age variance = `mean(std_log_inc²) − mean(std_resid²)`.
+Script: `scripts/resid_vs_loginc.py` → `output/resid_vs_loginc.json`.
+
+| country | window | mean `std_resid²` | mean `std_log_inc²` | between-age | share of `std_log_inc²` | current `var_log_earns` target |
+|---|---|---|---|---|---|---|
+| POL | 2000–2020 | **0.6912** | 0.7216 | 0.0304 | 4.2% | 0.7216 (v2); v1 `std_perm²` 0.5078 |
+| FRA | 2001–2016 | **0.4442** | 0.4762 | 0.0321 | 6.7% | 0.4762 |
+| GER | 2001–2016 | **0.5890** | 0.6452 | 0.0561 | 8.7% | 0.6452 |
+| USA | 2001–2016 | **0.8885** | 0.9557 | 0.0672 | 7.0% | 0.9557 |
+
+- **The current targets are exactly the raw variance.** For FRA/GER/USA and
+  PL v2, `var_log_earns` = mean `std_log_inc²` to the last digit. This also
+  confirms that the July export's `std_log_inc` is the raw variable: it
+  differs from `std_resid` in every year and every country, and is always
+  larger.
+- **The between-age component is small and stable.** By year it ranges
+  0.020–0.042 (PL), 0.028–0.037 (FRA), 0.040–0.061 (GER) and 0.048–0.081
+  (USA). In the USA it rises over the window (0.048 in 2001, 0.080 in 2013).
+  The country ranking does not change: PL < FRA < GER < USA in absolute terms.
+- **It does not explain the PL v1 → v2 jump.** Between-age variance in Poland
+  is only 0.030. Most of the 0.21 gap between `std_perm²` and `std_loginc²`
+  (24.1) therefore comes from 3-year averaging (the model says about 0.06)
+  and from the [PE] vs [M] sample (the remaining ~0.12), not from
+  residualization.
+- **Same sample.** `nobs_resid` = `nobs_log_inc` exactly for PL/FRA/USA in
+  every year, so `std_resid` and `std_log_inc` are on the same sample [M].
+  The difference between them is pure age residualization.
+  **Exception: GER.** The July export's `nobs_log_inc` is exactly 3.997× the
+  new export's `nobs_resid`, at a constant ratio (0.2502) in every year. A
+  constant ratio points to a different count *reporting* convention in one of
+  the two exports (e.g. weighting / subsample of the IAB data), not to a
+  different selection. That would change the ratio from year to year. Not
+  confirmed: the clean check is to download `std_loginc` for GER from the same
+  new export.
+
+**What this means for the comparison with the model.** The model moment
+(`moments_from_panel`) is the within-age variance averaged over ages, so
+conceptually it matches `std_resid²`, not `std_log_inc²`. Raw targets
+overstate what the model should match by 4–9%, depending on the country.
+
+**A second mismatch on the model side, in the opposite direction, which
+must be decided together.** The simulated panel covers **36 years**
+(≈ ages 25–60, §2, chosen to replicate KMV/GKOS). GRID covers ages
+**25–55**, i.e. 31 years. Within-age variance grows with age, so the
+extra 5 oldest years raise the model's `var_log_earns`. Simulated at each
+country's canonical parameters (50k workers, seed 1234), mean variance over
+the first 31 columns vs all 36:
+
+| parameters | all 36 years | first 31 years (25–55) | difference |
+|---|---|---|---|
+| PL v2 | 0.720 | 0.670 | −6.9% |
+| FRA | 0.476 | 0.441 | −7.3% |
+| GER | 0.551 | 0.510 | −7.3% |
+| USA | 0.803 | 0.770 | −4.1% |
+
+The two biases have similar magnitude and **opposite signs**. Raw data add
+between-age variance of +4–9%. The model adds ages 56–60, worth +4–7%. The
+current setup (raw target, 36-year panel) is therefore roughly
+self-cancelling, by coincidence rather than by design. **Switching to
+`std_resid` alone, without trimming the panel to 31 years (or computing
+moments only on the 25–55 columns), would replace one bias with another of
+similar size.** Consistent options:
+1. **`std_resid` + model moments on ages 25–55.** Fully consistent on both
+   sides. Requires re-estimating all four countries, because the panel
+   change also affects `var_d1`/`var_d5`/kurtosis (by a smaller amount, not
+   measured here) and the targets change for all of them.
+2. **Status quo (raw `std_log_inc` + 36 years) as a documented approximation,**
+   with the table above as justification that the net bias is a few percent.
+   PL v2 stays as is.
+
+Recommendation and decision: in 24.4, after discussion.
+
 ---
 
 ## Open decisions (not yet settled)
