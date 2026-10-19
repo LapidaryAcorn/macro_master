@@ -1870,6 +1870,108 @@ falling — but the picture is "a real, one-sided pull with no ceiling," not
 
 ---
 
+## 24. Poland's `var_log_earns` target measured the wrong variable — `std_perm` vs `std_loginc` (2026-10-19)
+
+All §18–§23 Polish results (tag `notatka-promotor-v1`) used `targets/pol_grid.json`,
+whose `var_log_earns = 0.5078` is the mean over years of `std_perm²`. FRA/GER/USA
+use `std_log_inc²`. This section documents the problem, the fix and its
+consequences. v1 outputs are left untouched; everything new goes to
+`output/pol_v2/` and `targets/pol_grid_v2.json`.
+
+### 24.1 The problem, confirmed
+
+**What `std_perm` is (GRID Codebook, `grid-database.org/.../GRID_Codebook.pdf`,
+"Residual log permanent income", p. 48).** The sample standard deviation of
+*residual log permanent earnings*. Two things differ from annual log earnings,
+not one:
+
+1. **3-year average.** Permanent earnings = sum of annual earnings over
+   `t−2 … t` divided by the number of those years above the minimum threshold,
+   kept only if at least two years qualify. It is the average of *levels*,
+   then logged. That is consistent with Guvenen–Pistaferri–Violante (NBER
+   w30524, §2, "Variable definitions", item 3). The empty `std_perm` for
+   2000–2001 in the file (no `t−2` year) is consistent with this.
+2. **Age-residualized.** `r_i` is "the residual from the sex-specific
+   age-dummy regression of log permanent earnings, estimated on sample [PE]
+   in the relevant year". The 3-year average is regressed on age dummies
+   within each year, so between-age differences in mean log earnings are
+   removed.
+
+It is also measured on a **different sample** ([PE]: ≥ 2 of 3 years above the
+threshold, `nobs_perm` ≈ 4.1–4.5M) than annual log income ([M]: above the
+threshold in year t, `nobs_loginc` ≈ 4.5–4.9M). [M] is the larger sample and
+includes the weakly attached, low-earnings entrants that [PE] drops.
+
+**What `std_loginc` is (Codebook p. 31).** The sample standard deviation of
+the log of eligible annual earnings (above the threshold) on sample [M].
+It is **raw**, not residualized: the residualized annual counterpart is a
+separate statistic, `std_resid` (p. 40).
+
+**The FRA/GER/USA `std_log_inc` is the same variable.** The July 2026 export
+uses an older naming scheme, but it marks every residualized statistic with
+`res_` (`std_res_1yr_log_chg`, …) and the level column without it
+(`std_log_inc`), exactly as the October scheme does (`std_resid_*` vs
+`std_loginc`). Sample sizes follow the same pattern: in FRA 1991,
+`nobs_log_inc` = 302,370 > `nobs_res_1yr_log_chg` = 273,094. In PL 2010,
+`nobs_loginc` = 4.74M > `nobs_resid_d1yr`. The level count is the larger [M]
+cross-section, not the longitudinal sample. So `std_log_inc` (FRA/GER/USA) ≡
+`std_loginc` (PL): **raw annual log earnings, not residualized.** This
+verification is by naming convention and sample counts, since the old export
+has no codebook of its own. It is not a byte-level check.
+
+**What the model computes.** `moments_from_panel` takes
+`var_log_earns = mean over panel columns of the cross-sectional var(log annual earnings)`.
+That is the annual log level, **within each age** (one column = one age),
+averaged over ages.
+
+**Simulation (`scripts/pol_perm3_check.py` → `output/pol_v2/perm3_check.json`).**
+v1 Polish parameters, 50k workers, seed 1234, the estimation panel. The
+3-year average follows GRID's construction: average of levels over
+`t−2..t`, then log. The threshold rule never binds in the model.
+
+| model quantity (within-age, averaged over ages) | value |
+|---|---|
+| var(log annual earnings), all 36 columns (= `moments_from_panel`) | 0.5049 |
+| var(log annual earnings), columns 3–36 | **0.5248** |
+| var(log 3-year average), columns 3–36 | **0.4695** |
+| ratio | **0.895** |
+
+This reproduces the pre-check (0.470 vs 0.525, about 10% lower). **In the
+model, 3-year averaging alone reduces the variance by about 10.5%.**
+
+**In the data the gap is four times larger.** Same file
+(`data/PL std_log_inc.csv`, whose `std_perm` column is identical to
+`data/dane grid PL.csv` to the last digit, checked), mean of `std²` over years:
+
+| window | `std_perm²` (v1 target) | `std_loginc²` | ratio |
+|---|---|---|---|
+| 2000–2020 (`std_perm` effectively 2002–2020) | 0.5078 | **0.7216** | 0.704 |
+| 2002–2020 | 0.5078 | 0.7221 | 0.703 |
+| 2001–2016 (the FRA/GER/USA window) | 0.5186 | 0.7386 | 0.702 |
+
+In the data, `std_perm²` is 30% below `std_loginc²`; in the model, 3-year
+averaging explains 10.5%. The other ~20 p.p. come from the two remaining
+differences: age residualization (the between-age variance of mean log
+earnings, which `std_perm` removes and `std_loginc` keeps) and the [PE] vs [M]
+sample (weakly attached workers with low log earnings are in [M], not in
+[PE]). This file does not separate the two, since it has no age breakdown and
+no `std_resid`. **The correction to the target is therefore +42%
+(0.508 → 0.722), not about +10%.** The v1 target was not "slightly too low";
+it measured a much narrower concept.
+
+**A separate issue, not caused by the Polish file.** Because
+`moments_from_panel` computes the variance *within age* (per column), the
+model moment conceptually corresponds to *age-residualized* log annual
+earnings (GRID `std_resid`), not raw `std_loginc`. Raw `std_loginc` also
+contains the between-age variance of mean log earnings, which the model, with
+no deterministic age profile, does not generate. This applies identically to
+**all four** countries (FRA/GER/USA have used raw `std_log_inc` from the
+start, §10). So it does not break cross-country comparability. It does mean
+`var_log_earns` is biased upward for all of them by the between-age variance.
+It is a separate methodological choice from the one below (see 24.2).
+
+---
+
 ## Open decisions (not yet settled)
 
 - ~~**If `β₁` again runs to its bound after widening to 8.0:** fix it and
