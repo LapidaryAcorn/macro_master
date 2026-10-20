@@ -2297,6 +2297,65 @@ everything else. Then (1) sub-period split, (2) nested specs, (3) recovery,
 as "v1 targets (`std_perm`), superseded — v2 rerun in progress", with §24 as
 the explanation.
 
+### 24.8 Sub-period split pre/post 2009 on v2 targets (2026-10-20)
+
+**Targets.** `targets/pol_grid_{pre,post}2009_v2.json` = the v1 sub-period
+files with `var_log_earns` replaced by `mean(std_loginc²)` over the sub-window
+(`data/PL std_log_inc.csv`): pre 2000–2008 **0.7735** (v1 `std_perm²`:
+0.5411, effectively 2002–2008), post 2009–2020 **0.6826** (v1: 0.4884). The
+other 7 moments are copied unchanged. Estimation is exactly as in §20
+(`pol_regime_split.py --version v2`: DE, 50k workers, maxiter 100 / popsize
+12, NM 400, start at KMV Table 3), with **no** `swap_death`. Added: OOS f on
+100k workers, seed 987654. Outputs: `output/pol_{pre,post}2009_v2/`,
+`output/pol_regime_split_v2.json`.
+
+| | full v1 | pre v1 | post v1 | **full v2** | **pre v2** | **post v2** |
+|---|---|---|---|---|---|---|
+| `var_log_earns` target | 0.508 | 0.541 | 0.488 | 0.722 | 0.773 | 0.683 |
+| λ₁ | 0.162 | 0.177 | 0.153 | 0.162 | 0.177 | 0.153 |
+| β₁ | 2.85 | 2.86 | 2.82 | 2.83 | 2.89 | 2.83 |
+| σ₁ | 1.98 | 1.99 | 1.98 | 2.00 | 2.02 | 1.99 |
+| λ₂ | 0.00877 | 0.00960 | 0.00775 | 0.00987 | 0.01138 | 0.00853 |
+| β₂ | 0.0169 | 0.0178 | 0.0130 | 0.0064 | 0.0061 | **0.0044** |
+| σ₂ | 1.40 | 1.40 | 1.33 | 1.21 | 1.15 | 1.18 |
+| ergodic sd z₂ | 0.714 | 0.726 | 0.728 | 1.064 | 1.113 | 1.166 |
+| half-life z₂ (yrs) | 10.3 | 9.8 | 13.4 | 27.2 | 28.6 | **39.6** |
+| in-sample f | 0.0041 | 0.0046 | 0.0032 | 0.0078 | 0.0085 | 0.0048 |
+| OOS f | 0.0037 | — | — | 0.0073 | 0.0082 | 0.0045 |
+
+Fit (OOS) in the sub-periods: worst moments are `frac_d1_lt_10` (+6.7% pre /
++5.5% post) and `kurt_d1` (−5.6% / −3.3%), the same pattern as the full v2
+window (§24.5). `var_log_earns` is matched to ≤ 0.5%. No parameter is at a
+bound.
+
+**Readings.**
+1. **The transitory component is the same in all six estimates** (β₁
+   2.82–2.89, σ₁ 1.98–2.02). The only thing that changes between sub-periods
+   is λ₁ (0.177 pre vs 0.153 post), and identically in v1 and v2. So the
+   2009 regime break (kurtosis / small-change share, §20) shows up as less
+   frequent transitory shocks, regardless of the level target.
+2. **The level change v1 → v2 does the same thing in each sub-period as in
+   the full window**: β₂ falls about 3× and the persistent ergodic sd rises
+   from about 0.72 to 1.1–1.17. The v2 conclusion (24.5: Poland's dispersion
+   is high, not low) holds in both sub-periods.
+3. **Post-2009 v2 has the slowest mean reversion (half-life 40 years) despite
+   a *lower* level target (0.683 vs 0.773 pre).** This is the same mechanism
+   as in the profile (24.5): the level pulls var₂ up and `var_d5` pulls it
+   down. Post-2009 `var_d5` is much lower (0.424 vs 0.517 pre), so the
+   discipline from above is weaker and β₂ falls further. The 12-year window
+   is also short for identifying a ~40-year half-life (cf. GER, §8b). The
+   post-2009 β₂ figure should be treated as weakly identified. It is not
+   evidence of a trend.
+4. **Comparison with §20 Q2.** In v1, both sub-periods gave practically the
+   same persistent sd (0.726 / 0.728) as the full window (0.714). In v2 both
+   sub-periods give it **higher** than the full window (1.11 / 1.17 vs 1.06),
+   and the spread between them is larger (half-life 29 vs 40 years). So the
+   persistent component is less stable across sub-periods than v1 suggested.
+   **Not checked here (as instructed): whether either sub-period calibrates
+   in the one-asset model.** Given ergodic sd ≥ 1.11 (≥ the full v2 window,
+   which does not calibrate, 24.6), it is very unlikely. The §20 Q2 answer
+   ("calibrates in both sub-windows") does not carry over to v2.
+
 ---
 
 ## 25. Newborns' income distribution in HANK: ergodic draw vs start at z = 0 (2026-10-20)

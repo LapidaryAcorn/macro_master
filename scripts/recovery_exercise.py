@@ -74,6 +74,10 @@ DE_KW = dict(maxiter=100, popsize=12, nm_maxiter=400)
 
 OUTDIR = "output/recovery"
 
+# Sec 24: --version v2 takes Poland's v2 free estimate (output/pol_v2/) as the
+# true process and writes to output/recovery_v2/. Same 2 seeds x 2 panels.
+V2_OVERRIDES = dict(true={"POL": "output/pol_v2/params.json"}, outdir="output/recovery_v2")
+
 
 def ensure_ger_free(workers: int):
     path = TRUE_PARAMS_SOURCE["GER"]
@@ -163,8 +167,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--countries", nargs="+", default=list(TRUE_PARAMS_SOURCE))
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
+    ap.add_argument("--version", choices=["v1", "v2"], default="v1")
     args = ap.parse_args()
 
+    global OUTDIR
+    if args.version == "v2":
+        TRUE_PARAMS_SOURCE.update(V2_OVERRIDES["true"])
+        OUTDIR = V2_OVERRIDES["outdir"]
     os.makedirs(OUTDIR, exist_ok=True)
     if "GER" in args.countries:
         ensure_ger_free(args.workers)

@@ -68,6 +68,12 @@ OOS_SIM_KWARGS = dict(n_workers=100_000, n_years_keep=36, seed=987654)
 
 OUTDIR = "output/nested_specs"
 
+# Sec 24: --version v2 swaps Poland to the v2 targets (var_log_earns from GRID
+# std_loginc) and the v2 free estimate, and writes to output/nested_specs_v2/.
+V2_OVERRIDES = dict(targets={"POL": "targets/pol_grid_v2.json"},
+                    free={"POL": "output/pol_v2/params.json"},
+                    outdir="output/nested_specs_v2")
+
 PLACEHOLDER = dict(beta2=1.0, lambda2=0.01, sigma2=0.0, lambda1_det=0.5)
 
 VARIANTS = {
@@ -158,8 +164,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--countries", nargs="+", default=list(TARGETS_PATH))
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
+    ap.add_argument("--version", choices=["v1", "v2"], default="v1")
     args = ap.parse_args()
 
+    global OUTDIR
+    if args.version == "v2":
+        TARGETS_PATH.update(V2_OVERRIDES["targets"])
+        FREE_PARAMS_PATH.update(V2_OVERRIDES["free"])
+        OUTDIR = V2_OVERRIDES["outdir"]
     os.makedirs(OUTDIR, exist_ok=True)
     all_results = {}
     for cc in args.countries:

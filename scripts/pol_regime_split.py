@@ -7,7 +7,13 @@ evidence), estimates both sub-windows with the same pipeline (DE only --
 TikTak is not needed here per DECISIONS Sec 9, this is an exploratory split
 not a canonical estimate), and compares against the full-window estimate.
 
-Usage: python scripts/pol_regime_split.py [--workers N]
+Usage: python scripts/pol_regime_split.py [--workers N] [--version v2]
+
+--version v2 (Sec 24): targets/pol_grid_{pre,post}2009_v2.json (var_log_earns
+from GRID std_loginc, other moments as v1), outputs output/pol_{pre,post}2009_v2/
+and output/pol_regime_split_v2.json, compared against output/pol_v2/. Also
+reports each estimate's OOS f (100k workers, seed 987654) -- extra
+information only, the estimates themselves are computed exactly as in v1.
 """
 from __future__ import annotations
 
@@ -28,6 +34,15 @@ WINDOWS = {
     "pol_pre2009": "targets/pol_grid_pre2009.json",
     "pol_post2009": "targets/pol_grid_post2009.json",
 }
+WINDOWS_V2 = {
+    "pol_pre2009_v2": "targets/pol_grid_pre2009_v2.json",
+    "pol_post2009_v2": "targets/pol_grid_post2009_v2.json",
+}
+OOS_SIM_KWARGS = dict(n_workers=100_000, n_years_keep=36, seed=987654)
+
+
+def rel_objective(m: dict, targets: dict) -> float:
+    return float(sum(((m[k] - targets[k]) / targets[k]) ** 2 for k in targets))
 SIM_KWARGS = dict(n_workers=50_000, n_years_keep=36)
 
 
@@ -47,29 +62,38 @@ def run_one(name: str, targets_path: str, workers: int) -> dict:
     disc = discretize_process(params, match_var_log=True,
                               sim_kwargs=dict(n_workers=50_000))
     export_chain(disc, outdir)
-    return {"name": name, "targets": targets, "params": params,
-            "objective": float(res.fun), "wall_s": wall}
+    out = {"name": name, "targets": targets, "params": params,
+           "objective": float(res.fun), "wall_s": wall}
+    if name.endswith("_v2"):
+        m = model_moments(params, **OOS_SIM_KWARGS)
+        out["oos_f"] = rel_objective(m, targets)
+        out["oos_moments"] = m
+    return out
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=5)
+    ap.add_argument("--version", choices=["v1", "v2"], default="v1")
     args = ap.parse_args()
+    v2 = args.version == "v2"
+    windows = WINDOWS_V2 if v2 else WINDOWS
+    pre, post = list(windows)
 
     results = {}
-    for name, path in WINDOWS.items():
+    for name, path in windows.items():
         results[name] = run_one(name, path, args.workers)
-        with open("output/pol_regime_split.json", "w") as f:
+        with open("output/pol_regime_split_v2.json" if v2 else "output/pol_regime_split.json", "w") as f:
             json.dump(results, f, indent=2, default=float)
 
-    full = json.load(open("output/pol/params.json"))
+    full = json.load(open("output/pol_v2/params.json" if v2 else "output/pol/params.json"))
     print("\n" + "#" * 78)
     print("PARAMETER COMPARISON: full window vs pre-2009 vs post-2009")
     print("#" * 78)
     print(f"{'param':10s} {'full(00-20)':>14s} {'pre(00-08)':>14s} {'post(09-20)':>14s}")
     for p in PARAM_ORDER:
-        print(f"{p:10s} {full[p]:14.5g} {results['pol_pre2009']['params'][p]:14.5g} "
-              f"{results['pol_post2009']['params'][p]:14.5g}")
+        print(f"{p:10s} {full[p]:14.5g} {results[pre]['params'][p]:14.5g} "
+              f"{results[post]['params'][p]:14.5g}")
 
 
 if __name__ == "__main__":
