@@ -2502,6 +2502,50 @@ Derived quantities (per rep):
    to weak precision on the right side of the profile, not to a structural
    break.
 
+### 24.12 Summary of §24 (status as of 2026-10-20)
+
+**Done.**
+- Problem diagnosed (24.1). `std_perm` = log of the 3-year average,
+  age-residualized, on sample [PE]. Target corrected to `std_loginc²` = 0.722
+  (24.2). Decision to keep raw `std_log_inc` + the 36-year panel for all
+  countries (24.3–24.4).
+- Poland v2 re-estimated (DE + TikTak), var₂ profile, report (24.5).
+  `swap_death` on the v2 chain: **does not calibrate** (24.6).
+- Re-runs on v2: sub-periods (24.8), nested specs (24.9), recovery (24.10),
+  bootstrap (24.11).
+- §25: newborns in HANK (KMV = ergodic draw; z = 0 would give 0.98, not
+  0.72). `death.py` unchanged.
+
+**Do any of these results change the §24.5 conclusions? No. They strengthen
+them.**
+1. *Does Poland have the lowest dispersion?* Still **no, the highest** among
+   the canonical estimates. The bootstrap CI for the persistent ergodic sd is
+   [1.00, 1.13], above FRA 0.90 and the pinned USA/GER 0.95. Both sub-periods
+   give it even higher (1.11 / 1.17).
+2. *Do the data prefer a value below 0.91?* Still **no, above it**. The var₂
+   bootstrap CI [1.00, 1.28] excludes 0.91 (stronger than the interpolation
+   in 24.5).
+3. *Is there a clear floor?* Still **yes**. Recovery: β₂ point-identified
+   (−2%, 4/4 reps, no v1-style bimodality). Nested V3 (β₂ = 0) rejected ×3.1.
+   The bootstrap CI lies inside the profile's noise band. The new nuance is
+   weak precision on the right side (asymmetric β₂ CI, sub-periods drifting
+   toward higher var₂).
+- One genuinely new observation: in v2 the persistent component is less
+  stable across sub-periods than in v1 (half-life 29 vs 40 years pre/post).
+  It is consistent with weak precision on the right side, not with a break.
+
+**Left (not run, waiting on a decision).**
+- **One-asset vs two-asset for Poland** (Open decisions, 24.6). Inputs:
+  `swap_death` on `output/pol_v2/var2_1.0/` (not run, as instructed), the
+  §25 variant (z = 0 entry, all countries), the two-asset model.
+- Exact f at var₂ = 0.9103 on the v2 targets (one run, ~35 min). Now low
+  priority, since the bootstrap CI already excludes 0.91.
+- Robustness test with `std_resid` + ages 25–55 (Open decisions, 24.3/24.4)
+  and confirming GER's `nobs` inconsistency between exports.
+- `swap_death` on the v2 sub-periods (deliberately not run, 24.8).
+- Updating the supervisor note (tag `notatka-promotor-v1`): the Polish
+  §18–§23 results are to be marked as v1, superseded by §24.
+
 ---
 
 ## 25. Newborns' income distribution in HANK: ergodic draw vs start at z = 0 (2026-10-20)
