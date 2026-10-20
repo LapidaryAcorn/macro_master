@@ -2398,6 +2398,47 @@ than in v1 (the higher level target is harder to hit with a single component:
 only because the denominator doubled. No change in conclusions: both
 components and Poisson arrival are necessary.
 
+### 24.10 Recovery for Poland v2 (2026-10-20)
+
+`recovery_exercise.py --version v2 --countries POL`. The same scheme as §21:
+the true process is the free v2 estimate (`output/pol_v2/params.json`),
+2 generating seeds (101, 202) × 2 synthetic panel sizes (50k, 300k).
+Re-estimation uses DE at the full budget, starting from the **neutral** KMV
+Table 3 values (not from the truth). Outputs `output/recovery_v2/` (v1 in
+`output/recovery/` untouched).
+
+| rep (seed, panel) | β₂ reldiff v1 | β₂ reldiff **v2** | ergodic sd z₂ v1 (true 0.714) | ergodic sd z₂ **v2** (true 1.064) |
+|---|---|---|---|---|
+| 101, 50k | −0.9% | −1.3% | 0.713 | 1.065 |
+| 101, 300k | −0.4% | −2.0% | 0.714 | 1.069 |
+| 202, 50k | −0.2% | −1.6% | 0.713 | 1.068 |
+| 202, 300k | **−99.4%** (failure: λ₂ ×11, a different basin) | −2.3% | **4.70** | 1.074 |
+
+Mean over all parameters, v2: λ₁ −0.1%, β₁ −0.5%, σ₁ 0.0%, λ₂ −1.1%,
+**β₂ −1.8% (sd 0.4%)**, σ₂ +0.1%; ergodic sd z₂ +0.5%. β₂ by panel size:
+−1.5% (50k) vs −2.1% (300k), so it does not improve with sample size.
+
+**Readings.**
+1. **At the v2 point, β₂ is well identified, in the USA/FRA class (§21: −1.8%
+   / −4.0%), not the GER class (−82%).** All 4 reps fall in one basin, with a
+   small systematic bias of about −2% that does not shrink with the panel.
+   That is an ordinary small-sample / simulation bias, not an
+   identification problem. The fear in 24.7 ("v2 moves toward the German,
+   weakly identified region") **is not confirmed**: a 27-year half-life is
+   still identifiable from 8 moments on a 36-year panel. Germany's (§8b) is
+   ~250 years.
+2. **v1's bimodality (1/4 catastrophic reps) does not recur.** Four draws
+   do not prove that failure is impossible: 0/4 is consistent with a
+   failure rate of up to ~50% at 95% confidence. But it is consistent with
+   v2's minimum being easier for DE to find from a neutral start than v1's.
+3. **How this fits with the profile's shallow right slope (24.5).** Recovery
+   asks whether the moments map back to the parameters when the *only* noise
+   is simulation noise. The profile asks how much the fit to the *real* data
+   worsens as var₂ moves. Both can be true at once: the parameters are
+   point-identified (recovery), but the real data have a wide floor for var₂
+   (1.0–1.3 in the noise band), i.e. moderate *statistical* precision. The
+   bootstrap (24.11, if completed) gives the sampling-uncertainty part.
+
 ---
 
 ## 25. Newborns' income distribution in HANK: ergodic draw vs start at z = 0 (2026-10-20)
