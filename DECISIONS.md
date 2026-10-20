@@ -2299,6 +2299,98 @@ the explanation.
 
 ---
 
+## 25. Newborns' income distribution in HANK: ergodic draw vs start at z = 0 (2026-10-20)
+
+**Question.** In `hank_step2/death.py`, newborns keep their (β, e) state, so
+in the cross-section they draw `e` from the chain's ergodic distribution. For
+PL v2 that distribution has var(log e) = 1.38, while the target is 0.72
+(§24.6). The estimation panel (`simulate.py`) instead starts every worker at
+z = 0. Would starting newborns at z = 0 close this gap? Is it consistent with
+KMV? **Nothing in `death.py` has been changed.**
+
+**What KMV do.** KMV (2018, AER), §II.A: households die at Poisson rate ζ
+"and upon death give birth to an offspring with zero wealth and labor
+productivity equal to a random draw from its ergodic distribution". Footnote
+15 adds that death is there to generate enough households with zero
+*illiquid* wealth, and that the stationary distribution exists even with
+ζ = 0. ζ = 1/180 per quarter, average lifetime 45 years (Table 6). So
+**`death.py` reproduces KMV exactly.** Their code was not checked
+separately; the text is unambiguous. KMV themselves live with the same gap:
+the process is estimated on a lifecycle panel from z = 0 (our `simulate.py`
+reproduces their Table 2 that way), and the HANK cross-section is ergodic.
+For KMV's own chain, ergodic var = 1.07 (STEP2_LOG S5; 1.15 after our
+re-discretization of Table 3) vs the target of 0.70.
+
+**Computation** (`scripts/newborn_entry_variance.py` →
+`output/newborn_entry_variance.json`). Each country's exported chain (rebuilt
+with the same `discretize_process` call, checked against
+`income_process_zgrid.txt`). The components are independent, so the
+cross-section is D_j = ζ·e₀(I − (1−ζ)P_j)⁻¹ with e₀ = point mass at z_j = 0.
+The figures are var(log e) of **quarterly** productivity in the cross-section:
+
+| chain | ergodic (now) | perpetual youth, start z = 0 | same, ages truncated at 36 yrs | uniform ages 0–36 yrs, z = 0 | target `var_log_earns` (annual) | ergodic / target |
+|---|---|---|---|---|---|---|
+| **POL v2** | **1.381** | **0.982** | 0.713 | 0.781 | 0.722 | 1.91 |
+| POL v1 | 0.721 | 0.620 | 0.540 | 0.573 | 0.508 | 1.42 |
+| FRA | 1.040 | 0.689 | 0.476 | 0.523 | 0.476 | 2.18 |
+| GER (pinned) | 1.044 | 0.735 | 0.525 | 0.579 | 0.645 | 1.62 |
+| USA (pinned) | 1.191 | 0.988 | 0.829 | 0.889 | 0.956 | 1.25 |
+| KMV Table 3 | 1.153 | 0.888 | 0.697 | 0.754 | 0.70 | 1.65 |
+
+The continuous closed form E_t[V(t)] = V_erg·2β/(ζ + 2β) per component gives
+1.000 for PL v2 (chain: 0.982), so the discretization does not distort this.
+
+**Readings.**
+1. **Entry at z = 0 under perpetual youth reduces PL v2 from 1.38 to 0.98, not
+   to 0.72.** The reason: with ζ = 1/180, (1 − ζ)^144 = **45%** of the
+   population is older than 36 working years, and Poland's persistent
+   component (half-life 27 years) keeps building variance for that long.
+   Only truncating ages at 36 years (0.713) brings the cross-section to the
+   target. Perpetual youth cannot do that without an age state variable,
+   i.e. deterministic retirement/death after 144 quarters, which is a
+   different model from KMV. The remaining gap between "uniform 0–36"
+   (0.78) and the target (0.72) is time aggregation (quarterly vs annual
+   earnings); 0.713 lands near 0.72 because the exponential age weights
+   favour the young.
+2. **PL v2's ergodic overshoot is not an outlier.** FRA has a *larger*
+   ergodic/target ratio (2.18) and calibrates. GER 1.62 and KMV themselves
+   1.65 also calibrate. What breaks PL v2 is the **level** of ergodic
+   variance (1.38, the highest of all chains here, above USA's 1.19, which
+   also fails), not its mismatch to the data. With z = 0 entry, PL v2 would
+   reach 0.98, about the FRA/GER ergodic level (1.04) at which the one-asset
+   model calibrates. So the change would likely restore calibration. That
+   is a conjecture, not checked: it requires changing `death.py` and running
+   `swap_death`.
+3. **The change would apply to all countries, not just Poland.** It lowers
+   cross-sectional dispersion for every chain (FRA 1.04 → 0.69, GER 1.04 →
+   0.74). Their calibrations (§20, STEP2_LOG S5) would have to be redone, and
+   the KMV baseline (S1, which reproduces KMV exactly) would cease to be
+   comparable.
+
+**Assessment.**
+- **Consistency with KMV: no.** KMV explicitly choose ergodic draws.
+  Entry at z = 0 is a deviation from the model being replicated, and a
+  visible one: it changes the earnings distribution of newborns and so the
+  hand-to-mouth fraction, which is exactly what the calibration targets.
+- **Justification: partial.** For entry at z = 0: (i) the process is
+  *estimated* on a panel starting from z = 0, so a z = 0 entry makes the HANK
+  cross-section closer to the population on which it was estimated; (ii)
+  "newborn = worker entering the market" is a natural reading of perpetual
+  youth with a 45-year lifetime. Against: (i) it does not close the gap
+  (0.98 vs 0.72) as long as death is Poissonian; the full fix requires an
+  age state variable, which changes the model class; (ii) deviating from
+  KMV for **one** reason (Poland does not calibrate) looks like
+  target-shooting unless it is applied uniformly and justified ex ante;
+  (iii) KMV themselves accept the same type of gap (1.07–1.15 vs 0.70).
+- **Recommendation.** Keep the baseline consistent with KMV (ergodic draws).
+  Treat z = 0 entry as a **robustness variant for all four countries**
+  together, with this table as motivation, not as a fix for Poland. The
+  primary decision about Poland's one-asset vs two-asset model (§24.6) should
+  not depend on this variant. To discuss with the supervisor, together with
+  the open question about two-asset.
+
+---
+
 ## Open decisions (not yet settled)
 
 - **One-asset vs two-asset for Poland — REOPENED 2026-10-20 (§24.6).** On the
