@@ -90,6 +90,27 @@ REFERENCE = dict(n_workers_sim=15_000, de_maxiter=20, de_popsize=6, nm_maxiter=1
 
 OUTDIR = "output/bootstrap"
 
+# Sec 24: --version v2 swaps Poland to the v2 targets / point estimate and a
+# year panel whose var_log is GRID std_loginc^2 (output/pl_diagnostics/
+# year_panel_pol_v2.csv; v1 panel untouched), writes to output/bootstrap_v2/.
+V2_OVERRIDES = {"POL": dict(targets="targets/pol_grid_v2.json",
+                            params="output/pol_v2/params.json",
+                            panel="output/pl_diagnostics/year_panel_pol_v2.csv")}
+
+
+def _apply_version(version: str):
+    # Pool workers on Windows re-import this module (spawn), so the version is
+    # passed through the environment and applied at import time in every
+    # process, not only in main().
+    global OUTDIR
+    if version == "v2":
+        for cc, ov in V2_OVERRIDES.items():
+            COUNTRIES[cc].update(ov)
+        OUTDIR = "output/bootstrap_v2"
+
+
+_apply_version(os.environ.get("KMV_BOOTSTRAP_VERSION", "v1"))
+
 
 def resample_targets(panel: pd.DataFrame, window: tuple, rng: np.random.Generator) -> dict:
     yrs = panel[(panel.year >= window[0]) & (panel.year <= window[1])]["year"].to_numpy()
@@ -227,8 +248,16 @@ def main():
     ap.add_argument("--n-check", type=int, default=3)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--skip-validation", action="store_true")
+    ap.add_argument("--version", choices=["v1", "v2"], default="v1")
+    ap.add_argument("--countries", nargs="+", default=None)
     args = ap.parse_args()
 
+    os.environ["KMV_BOOTSTRAP_VERSION"] = args.version
+    _apply_version(args.version)
+    if args.countries:
+        for cc in list(COUNTRIES):
+            if cc not in args.countries:
+                del COUNTRIES[cc]
     os.makedirs(OUTDIR, exist_ok=True)
     with Pool(args.workers) as pool:
         if not args.skip_validation:

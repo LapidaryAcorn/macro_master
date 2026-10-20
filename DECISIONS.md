@@ -2439,6 +2439,69 @@ Mean over all parameters, v2: λ₁ −0.1%, β₁ −0.5%, σ₁ 0.0%, λ₂ �
    (1.0–1.3 in the noise band), i.e. moderate *statistical* precision. The
    bootstrap (24.11, if completed) gives the sampling-uncertainty part.
 
+### 24.11 Bootstrap SEs for Poland v2 (2026-10-20)
+
+**Panel.** `output/pl_diagnostics/year_panel_pol_v2.csv` is the v1 panel with
+`var_log` = `std_loginc²` (and `nobs_level` = `nobs_loginc`) for each year
+2000–2020. The v1 file is untouched. Check: the unresampled mean reproduces
+`targets/pol_grid_v2.json` **to the bit** for `var_log_earns`, `var_d1/d5`
+and `kurt_d1/d5`. The three small-change fractions in the panel (mean over
+years of per-year fractions) differ from the target (fractions from averaged
+percentiles) in the third digit (e.g. `frac_d1_lt_10` 0.4558 vs 0.4499).
+**This is identical in v1** (checked: the same discrepancy in
+`year_panel_pol.csv`), so it is a property of the §19 construction, not a new
+error. It means the bootstrap reps are centred on fractions about 1% higher
+than the point-estimate target. Not corrected, to keep the design "as in
+§19".
+
+**Run.** `bootstrap_se.py --version v2 --countries POL`, same budget as §19
+(reduced: 5k workers, DE 10×5, NM 50, warm start at `output/pol_v2/params.json`).
+Budget validation (3 resamples, reduced vs reference): OK. The largest mean
+deviation is β₂ at −3.7% (sd 2.5%), below the 15% threshold. 200 reps,
+1418 s. Outputs `output/bootstrap_v2/` (v1 in `output/bootstrap/` untouched).
+The version is passed through `KMV_BOOTSTRAP_VERSION`, because pool workers
+on Windows re-import the module and changes made in `main()` would not reach
+them.
+
+| | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ |
+|---|---|---|---|---|---|---|
+| v2 point estimate | 0.1623 | 2.832 | 2.001 | 0.00987 | 0.00638 | 1.209 |
+| v2 bootstrap mean | 0.1591 | 2.822 | 2.007 | 0.00981 | 0.00622 | 1.217 |
+| v2 SE | 0.0033 | 0.077 | 0.010 | 0.00030 | 0.00060 | 0.012 |
+| v2 95% CI | [0.153, 0.165] | [2.69, 2.91] | [1.989, 2.026] | [0.00938, 0.01045] | [0.00546, 0.00805] | [1.203, 1.251] |
+| v2 rel. SE | 2.0% | 2.7% | 0.5% | 3.0% | **9.4%** | 1.0% |
+| v1 rel. SE (§19) | 2.0% | 1.9% | 0.6% | 4.0% | 7.0% | 1.1% |
+
+Derived quantities (per rep):
+
+| | v1 | **v2** |
+|---|---|---|
+| var₂ 95% CI | [0.501, 0.540] | **[1.005, 1.276]** (mean 1.174) |
+| ergodic sd z₂ 95% CI | [0.708, 0.735] | **[1.002, 1.130]** |
+| half-life z₂ 95% CI (yrs) | [9.0, 11.6] | [21.5, 31.8] |
+
+**Readings.**
+1. β₂ is the least precise parameter, as in v1, and a little less precise
+   than in v1 (relative SE 9.4% vs 7.0%; the CI is asymmetric, with the upper
+   tail toward faster mean reversion). The other parameters have relative SEs
+   of 0.5–3%.
+2. **The var₂ CI [1.00, 1.28] excludes both the v1 value (0.51) and the KMV
+   anchor (0.91).** That is firmer evidence than the profile interpolation
+   (24.5, Q2) that the data reject 0.91. **Interpretation caveats, as in
+   §19:** (i) this is only year-to-year variability of the GRID statistics,
+   not full sampling uncertainty; (ii) every rep is warm-started at the point
+   estimate, so the CI is conditional on that basin. §24.10 suggests the
+   basin risk is small in v2 (4/4 recovery reps in one basin).
+3. The bootstrap CI for var₂ is narrower than the profile's noise band
+   (1.0–1.3, 24.5) and lies inside it, so the two measures agree. The
+   `var2_1.0` chain (24.6 / §25, a candidate for the one-asset route) sits
+   at the **lower edge** of the bootstrap CI.
+4. The sub-period point estimates (24.8: var₂ 1.24 pre / 1.36 post) fall in
+   the upper tail of this CI or above it. The difference between sub-periods
+   is of the same order as the year-to-year variability. Again, this points
+   to weak precision on the right side of the profile, not to a structural
+   break.
+
 ---
 
 ## 25. Newborns' income distribution in HANK: ergodic draw vs start at z = 0 (2026-10-20)
