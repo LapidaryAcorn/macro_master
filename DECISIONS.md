@@ -2356,6 +2356,48 @@ bound.
    which does not calibrate, 24.6), it is very unlikely. The §20 Q2 answer
    ("calibrates in both sub-windows") does not carry over to v2.
 
+### 24.9 Nested specs for Poland v2 (2026-10-20)
+
+`nested_specs.py --version v2 --countries POL`. Same design and budget as
+§22 (DE, 50k workers, maxiter 100 / popsize 12, NM 400, start at KMV
+Table 3; OOS 100k workers, seed 987654). Reference: the free v2 estimate
+(`output/pol_v2/params.json`). Outputs `output/nested_specs_v2/` (v1 in
+`output/nested_specs/` untouched).
+
+| variant | free params | OOS f v1 | ×full v1 | **OOS f v2** | **×full v2** | worst moment v2 |
+|---|---|---|---|---|---|---|
+| full (6) | 6 | 0.00367 | 1 | **0.00728** | 1 | `frac_d1_lt_10` +6.6% |
+| V1 single component | 3 | 0.308 | ×84 | 0.481 | ×66 | `var_log_earns` −61% |
+| V2 deterministic arrival (AR(1)) | 2 | 2.19 | ×596 | 2.36 | ×324 | `kurt_d1` −80% |
+| **V3 β₂ = 0 (random walk)** | 5 | 0.0130 | **×3.5** | **0.0224** | **×3.1** | **`var_d5` −10.9%** |
+
+**Key question: is V3 (β₂ = 0) still clearly worse than the full model?
+Yes.** OOS f 0.0224 vs 0.0073 is ×3.1, far outside the noise band (+20% of
+the minimum, 0.0087). Relative to v1 (×3.5) the penalty is barely smaller,
+even though v2 moved β₂ toward zero (half-life 27 years). Mean reversion of
+the persistent component therefore stays necessary.
+
+**What changed in V3's structure, and why it makes the v2 test stronger.**
+In v1 the V3 optimum was a degenerate corner: λ₂ at the 0.1 bound, σ₂ = 0.21,
+and the "transitory" component took over persistence (β₁ = 0.50, λ₁ = 0.058).
+It was a different model, not a random walk added to the same transitory
+component. In v2, V3 has a sensible structure. The transitory component is
+almost the same as the full one (λ₁ 0.153, β₁ 2.60, σ₁ 2.08). The
+permanent component has λ₂ = 0.0133 (a shock every ~19 years) and σ₂ = 0.81.
+So v2 compares like with like: the same transitory structure, with and
+without β₂ > 0. **It is rejected by `var_d5`** (−10.9%, plus `var_d1` +6.2%,
+`var_log_earns` +4.3%). A random walk cannot reproduce the average level
+(0.72, an average over 36 years in which variance grows linearly with age)
+and the 5-year change variance at the same time. Fitting the level forces a
+small σ₂, and then the permanent part contributes too little to Δ5y. This is
+the same discipline from above as on the right side of the profile (24.5).
+
+**V1/V2:** still catastrophic. They are slightly worse in absolute terms
+than in v1 (the higher level target is harder to hit with a single component:
+`var_log_earns` −61% vs −44% in v1). Their ratio to the full model is lower
+only because the denominator doubled. No change in conclusions: both
+components and Poisson arrival are necessary.
+
 ---
 
 ## 25. Newborns' income distribution in HANK: ergodic draw vs start at z = 0 (2026-10-20)
