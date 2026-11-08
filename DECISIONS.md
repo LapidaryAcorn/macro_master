@@ -2768,6 +2768,183 @@ the baseline.
 
 ---
 
+## 29. How KMV (and GKOS) actually did it — and where we differ (G, 2026-11-08)
+
+**Sources obtained.** Saved locally to `inputs/kmv_method/` and `inputs/gkos/`
+(not committed: third-party PDFs and code):
+- KMV, AER 108(3) 2018, published version (`HANK.pdf`), and the online
+  appendix (`app.pdf`, benjaminmoll.com);
+- the 2016 CEP working paper (`CEP-WP-2016-2-…pdf`);
+- GKOS NBER w20913 (2015, the version KMV cite as "Guvenen et al. 2015"),
+  GKOS 2019, and the moment workbooks `GKOS_2015_moments.xls` /
+  `GKOS_2021_moments.xlsx` (github.com/serdarozkan/papers);
+- `estimate.cu`, a CUDA port of "Kaplan, Moll and Violante's original Fortran
+  codes" by Karibzhanov (Bank of Canada SDP 2020-13, `boc.pdf`;
+  github.com/ikarib/HANK_EarningsEstimation).
+
+**Could not be fetched; please download manually:**
+1. **KMV replication package**, openICPSR project 231376
+   (https://www.openicpsr.org/openicpsr/project/231376/version/V1/view, DOI
+   10.3886/E231376V1, ~178 MB, needs a login). Unzip to
+   `inputs/kmv_replication/`. This is the only primary source for points 1 and
+   5 below; everything about the code is otherwise from the port.
+2. **GKOS Econometrica 2021 + Supplemental Material** (ECTA14603):
+   https://www.econometricsociety.org/publications/econometrica/2021/09/01/what-do-data-millions-us-workers-reveal-about-lifecycle,
+   into `inputs/gkos/`. Low priority: KMV used the 2015 version.
+
+### 29.1 The SMM objective
+
+The paper and appendix do not define it. AER p. 719 says only "Simulated
+Method of Moments using Social Security Administration (SSA) data". Appendix
+D.1 covers only the discretization (3 × 11 points). The code port
+(`estimate.cu`, lines 254–263 and 376):
+- residuals are **relative**: `model/target − 1` for all 8 moments, as in ours
+  (§4);
+- **the two kurtosis residuals are multiplied by √0.5**, so in the squared
+  objective the kurtoses get **weight 0.5**, and every other moment weight 1.
+  (Our subagent's summary missed this; read directly from the file.) We use
+  weight 1 for all 8 moments;
+- an identity matrix otherwise. The optimizer is DFLS/NEWUOA (derivative-free
+  least squares), not DE/TikTak.
+
+### 29.2 Standard errors
+
+None are reported. Table 4 (AER p. 720, "Rates expressed as quarterly
+values") gives point estimates only; the appendix and the 2016 WP have none
+either. **So our bootstrap (§19/§24.11/§26) and the asymptotic SEs (§27) go
+beyond KMV**, and there is no KMV benchmark to compare them with.
+
+### 29.3 The 0.70 target for the level
+
+- **The seven change moments** come from GKOS w20913, Figure 1 / Table II:
+  **one base year (1995–96 changes), pooled over all ages 25–60** of the base
+  sample (men, above Y_min ≈ one quarter of full-time work at half the
+  minimum wage, no large self-employment income). Changes are taken net of
+  age effects. The subagent recomputed them from the workbook: var Δ1 0.234,
+  kurt 17.80, var Δ5 0.459, kurt 11.55, fractions 0.53/0.71/0.86. The port's
+  comment line gives the same targets (5-year kurtosis 11.55, not the 11.6 in
+  `KMV_US_DATA_TARGETS`).
+- **The 0.70 is defined nowhere**, neither in GKOS tables nor in KMV.
+  - The nearest published object is w20913's Figure A.2, a within-cohort
+    variance by age (0.59 at 25, 1.05 at 60; mean 0.79 over 25–60, 0.76 over
+    25–55).
+  - Most likely it is a cross-sectional variance of log earnings for the 1995
+    base sample, possibly net of age dummies, supplied by GKOS and
+    unpublished. Unverified; only the replication package, or an e-mail to
+    the authors, can settle it.
+- Consequence for us: there is no "correct" KMV definition to copy. v3's
+  choice (age-residualized, men 25–55, mean over years) is defensible on its
+  own terms. It is not "what KMV did", because that is unknown.
+
+### 29.4 How GKOS aggregate over years
+
+- **The KMV targets use a single year, pooled across ages**, not an average
+  over years.
+- Elsewhere GKOS average annual statistics: in w20913 the age/RE-cell moments
+  are "computed for each year and then averaged over all years" (Table I
+  note). In the 2019/2021 version, "average of these moments … over years".
+- We (GRID-based targets) **average annual statistics over 2000–2020**. For
+  kurtosis, pooling observations over years would add a mixture component
+  whenever variance moves over time. Checked on the Polish year panel with the
+  zero-mean mixture approximation, using nobs weights:
+  pooled kurt Δ1 ≈ 15.20 vs the mean of annual values 15.24, and pooled kurt
+  Δ5 ≈ 9.84 vs 9.88. **Negligible**: over this window the variance falls
+  while kurtosis rises, so the mixture effect cancels. No change needed.
+
+### 29.5 The jump specification: KMV's published process uses RESET jumps (new finding, important)
+
+§1 decided "additive jumps, not resets", citing "KMV eq. 30–31":
+`dz = −βz dt + ε dN`. **Those equation numbers are from the 2016 CEP working
+paper.** The **published AER version** (p. 718–719, eqs. 33–34) says instead
+that conditional on a jump, "a new log-earnings state z_{j,it} is drawn from
+a normal distribution" N(0, σ²), with `dz = −βz dt + dJ`. That is a **reset**:
+on arrival the component is replaced, not incremented. The online appendix
+(`app.pdf`, the y-process paragraph) uses the same "new log-earnings state is
+drawn" wording. Two independent checks agree with the published text:
+
+1. **KMV's own chain** (`annual-review/inputs/kmv_process/ymarkov_combined.txt`,
+   the generator used in step 2). With additive jumps the rate of jumping
+   *into* state j depends on the origin state (a normal centred on the
+   origin). With resets it is λ·w_j for every origin. In the 33-state
+   generator there are only **13 distinct off-diagonal rates**, and at most 3
+   distinct rates flow into any state (persistent-jump landings 0.00036–0.0008,
+   identical across origins, plus drift entries). That is the reset signature.
+   Script: `scripts/kmv_port_check.py` → `output/pol_v3/kmv_method/port_check.json`.
+2. **The code port**: `z = jump ? σ·ε : (1 − δ/4)·z` (reset), 16 steps/year,
+   start from N(0, σ²/(1 + 2δ/λ)) (the reset process's stationary variance),
+   25-year burn-in, then moments in **one year of an ergodic cross-section**,
+   not on a lifecycle panel. Its "5-year" change is `log(y_4/y_0)`, i.e. a
+   4-year gap (probably a bug in the port, or in the original).
+
+**Does the reset + ergodic design reproduce KMV's Table 2?** Simulated at Table 3
+parameters (400k workers):
+
+| moment | KMV Table 2, model | ours: additive + lifecycle 36 yrs (§1–2) | port: reset + ergodic, 4-yr "Δ5" | reset + ergodic, true 5-yr Δ5 |
+|---|---|---|---|---|
+| var log earns | 0.70 | 0.693 | 0.750 | 0.750 |
+| var Δ1 | 0.23 | 0.229 | 0.234 | 0.234 |
+| var Δ5 | 0.46 | 0.504 | 0.484 | 0.545 |
+| kurt Δ1 | 16.5 | 14.55 | **16.18** | 16.18 |
+| kurt Δ5 | 12.1 | 10.84 | 12.95 | **11.90** |
+| frac < 10% | 0.56 | 0.547 | 0.552 | 0.552 |
+| frac < 20% | 0.67 | 0.659 | 0.663 | 0.663 |
+| frac < 50% | 0.85 | 0.839 | 0.845 | 0.845 |
+
+- **Both designs reproduce Table 2 about equally well overall.** Ours is
+  better on the level and var Δ5. Reset + ergodic is clearly better on both
+  kurtoses, which is exactly the "residual kurtosis gap" the `simulate.py`
+  docstring attributes to GKOS sample details.
+- So **§1's verification ("only the additive version reproduces"; reset gives
+  var Δ1 ≈ 0.40) does not hold for the reset + ergodic design**. It was
+  presumably run as reset + lifecycle, or with a different reset
+  implementation. That test is not in the repo and cannot be re-checked.
+- Our design is internally consistent and reproduces Table 2. **But it is the
+  2016 WP's process, not the published one.** The published process, KMV's own
+  chain and the port all use resets.
+
+**Why it matters for the thesis conclusion.**
+- Under resets, the ergodic variance of a component is λσ²/(λ + 2β), not
+  λσ²/(2β). The "KMV anchor" used throughout (§8b, `KMV_ERGODIC_VAR2 = 0.9103`
+  for the persistent component) applies the **additive** formula to
+  parameters KMV estimated under **resets**. Under KMV's own specification
+  their persistent component has ergodic variance 0.007·1.53²/(0.007 + 0.018)
+  = **0.655** (sd 0.81), not 0.91 (sd 0.95).
+- Comparisons of Poland's var₂ with "KMV's value" (§23, §24.5, §24.12)
+  therefore mix two specifications. The like-for-like comparison is either
+  Poland-additive vs KMV-re-estimated-additive (§12's GRID-USA is the nearest
+  thing), or Poland-reset vs KMV-reset.
+- β has a different meaning under the two specifications. It is the drift
+  between jumps in both, but under resets a jump also wipes out past
+  persistence. Half-lives and the "years between shocks" are not comparable
+  across the two.
+
+**Decision (2026-11-08).** The B–F runs started today use the **existing
+design** (additive jumps, lifecycle panel), so v3 stays comparable with v1/v2
+and with FRA/GER/USA, which the brief says not to recompute. All "vs KMV"
+comparisons in §26–§28 are labelled with the formula used (additive-formula
+anchor 0.91 *and* KMV-spec 0.655). **Recommended follow-up, not run:** add a
+`reset_jumps` option to the simulator (default unchanged). Re-estimate Poland
+v3 under resets, with a lifecycle panel and with an ergodic cross-section,
+and decide with the supervisor which specification is the baseline. This
+needs the openICPSR package first (point 1 above), to confirm the original
+Fortran matches the port.
+
+### 29.6 Summary: our method vs KMV
+
+| | KMV (published / port) | ours | needs a change? |
+|---|---|---|---|
+| objective | squared relative deviations, identity, **kurtosis weight 0.5** | squared relative deviations, all weights 1 | **minor**: a weight-0.5 variant is a cheap robustness check |
+| optimizer | DFLS / NEWUOA | DE + TikTak multistart, OOS selection | no (ours is more thorough) |
+| SEs | none | bootstrap + asymptotic (§27) | no |
+| jump specification | **reset** (AER eq. 33–34, KMV chain, port) | additive (2016 WP eq. 31) | **yes, the most important one**: see 29.5 |
+| simulation sample | ergodic cross-section, one year | lifecycle panel from z = 0, 36 (v3: 31) years | tied to the jump choice; decide together |
+| time step | 16 / year, Euler decay | 24 / year, exact exponential decay | no |
+| 5-year change | 4-year gap in the port (likely a bug) | true 5-year gap | no |
+| data aggregation | one year (1995), pooled over ages | mean of annual statistics, 2000–2020 | no (pooling vs averaging is ≈ 0 for PL kurtosis, 29.4) |
+| level target | 0.70, definition unknown | `std_resid²`, men 25–55 (v3) | no (KMV's is undocumented) |
+
+---
+
 ## Open decisions (not yet settled)
 
 - **One-asset vs two-asset for Poland — REOPENED 2026-10-20 (§24.6).** On the
