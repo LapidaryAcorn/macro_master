@@ -2640,6 +2640,134 @@ The continuous closed form E_t[V(t)] = V_erg·2β/(ζ + 2β) per component gives
 
 ---
 
+## 26. Poland v3: residualized level, ages 25–55, trends in the moments (2026-11-08)
+
+**Scope after the meeting with the supervisor.** From here on only Poland is
+re-estimated. FRA/GER/USA stay exactly as they are (method validation, §0a/§11)
+and are **not** recomputed under the v3 definitions. Nothing from v1/v2 is
+overwritten: v3 writes `targets/pol_grid_v3*.json`, `output/pol_v3/`,
+`output/pol_v3_end/` and new scripts. For Poland only, this implements "option
+1" from §24.3 (the robustness item in Open decisions).
+
+### 26.1 Targets v3 (A.1)
+
+`targets/pol_grid_v3.json` = v2 with
+`var_log_earns = mean_{2000..2020}(std_resid²) = 0.69119` (GRID `std_resid`,
+`data/std resid.csv`, POL, Male, 25–55; age-residualized annual log earnings
+on sample [M], `nobs_resid = nobs_loginc` in every year, checked again in the
+script). The other seven moments are copied from v2 unchanged (they are
+residualized changes already). Script: `scripts/pol_v3_targets.py`.
+
+One small inconsistency found while rebuilding the year panel: the three
+fractions in the targets are interpolated from the **across-year mean
+percentiles** (`grid_loader.fractions_from_percentiles`), whereas the year panel
+(`year_panel_pol_v2.csv`, used by the bootstrap since §19) interpolates **year by
+year**, and the mean of those differs by +0.0059 / −0.0013 / +0.0015
+(<10 / <20 / <50%). Variances and kurtoses match to machine precision. Decision:
+targets stay as in v2 (the brief says so, and it keeps v2 vs v3 a one-moment
+comparison). The gap is ≤ 1.3% of the target and is noted wherever the year
+panel is used (trends, bootstrap, Ω_data).
+
+### 26.2 Model moments on ages 25–55 only (A.2)
+
+`moments_from_panel(logy, n_age_cols=None)` and
+`model_moments(params, n_age_cols=None, **sim_kwargs)`. With `n_age_cols=31`
+only the first 31 columns of the 36-year panel (ages 25–55) are used, for the
+level and for 1- and 5-year changes (5-year changes therefore only pair ages
+25→30 … 50→55). The default `None` is **bit-for-bit unchanged**:
+`tests/test_age_window.py` compares against a verbatim copy of the old function.
+A separate check against the `HEAD` version of `simulate.py` gave identical
+dicts at KMV Table 3 and at the PL v2 estimate. The first k simulated years do
+not depend on how many years follow (same RNG calls in the same order), so
+`model_moments` simulates only 31 years when `n_age_cols=31`. The test confirms
+that the moments equal the 36-year panel sliced to 31 columns exactly (≈14% less
+work per evaluation). The option is threaded through `discretized_moments`,
+`discretize_process(match_var_log=True)` and `run.build_table`. All Poland v3
+runs use `n_age_cols=31`.
+
+### 26.3 Linear trends in the eight moments (A.3)
+
+Annual panel `output/pol_v3/year_panel_pol_v3.csv` = `year_panel_pol_v2.csv`
+with `var_log = std_resid²` (v2's `std_loginc²` kept as `var_log_v2`).
+OLS of each series on a constant and the year. Newey–West slope SE, Bartlett
+kernel, lag 2 (= ⌊4(T/100)^{2/9}⌋ for T = 16–21; no small-sample correction).
+Plain OLS SEs are in `trends.csv`.
+
+**How the different series lengths are treated.** GRID indexes a change by its
+base year: Δ1 in year t is t→t+1 (2000–2019), Δ5 in year t is t→t+5
+(2000–2015). The level runs 2000–2020. Each moment's trend is fitted on **its
+own available years**, with no padding and no common sub-window. Its "window
+midpoint" is the mean of its own years (2010 / 2009.5 / 2007.5). Checked in the
+script: the trend at that midpoint equals the series mean to machine
+precision (an OLS identity with a constant). So the v3 baseline targets (window
+means) are exactly "the trend at the midpoint"; for the fractions this holds up
+to the §26.1 interpolation gap.
+
+| moment | years | mean (= trend at mid) | slope / yr | NW se | NW t | trend 2000 | mid year | trend at series end | trend 2019 |
+|---|---|---|---|---|---|---|---|---|---|
+| var log earns (`std_resid²`) | 2000–2020 | 0.6912 | −0.00671 | 0.00168 | −4.0 | 0.758 | 2010 | 0.624 (2020) | 0.631 |
+| var Δ1 | 2000–2019 | 0.2595 | −0.00385 | 0.00060 | −6.4 | 0.296 | 2009.5 | 0.223 (2019) | 0.223 |
+| var Δ5 | 2000–2015 | 0.4765 | −0.01026 | 0.00106 | −9.6 | 0.554 | 2007.5 | 0.400 (2015) | 0.359* |
+| kurt Δ1 | 2000–2019 | 15.24 | +0.098 | 0.054 | +1.8 | 14.31 | 2009.5 | 16.17 (2019) | 16.17 |
+| kurt Δ5 | 2000–2015 | 9.878 | +0.150 | 0.028 | +5.3 | 8.75 | 2007.5 | 11.01 (2015) | 11.61* |
+| frac Δ1 < 10% | 2000–2019 | 0.4558 | +0.00245 | 0.00196 | +1.2 | 0.433 | 2009.5 | 0.479 (2019) | 0.479 |
+| frac Δ1 < 20% | 2000–2019 | 0.6681 | +0.00269 | 0.00101 | +2.7 | 0.642 | 2009.5 | 0.694 (2019) | 0.694 |
+| frac Δ1 < 50% | 2000–2019 | 0.8445 | +0.00138 | 0.00045 | +3.1 | 0.831 | 2009.5 | 0.858 (2019) | 0.858 |
+
+\* linear extrapolation 4 years past the last data year (2015).
+
+Files: `output/pol_v3/trends/{trends.csv, trends.json, trend_residuals.csv,
+trends.png, v3_end_meta.json, log.txt}`.
+
+Readings:
+- **Dispersion falls over the window, and tails get fatter.** All three
+  variances fall significantly (−19% / −28% / −32% of the mean over the window).
+  The kurtosis of 5-year changes rises (+23%), and there are more small changes.
+  Polish earnings risk became less dispersed but more concentrated in rare,
+  large changes.
+- **A linear trend is a rough description.** In the kurtoses and fractions the
+  plot shows a level shift around 2008–2009 rather than a steady drift (and a
+  reversal after 2016 in Δ1). NW t-statistics with T = 16–21 and lag 2 are also
+  only indicative. This matters for v3_end (below) and for the detrended
+  bootstrap (B.4 ii), whose residuals partly carry the break.
+
+### 26.4 v3_end targets: the trend at the end of the window (A.4, robustness only)
+
+`targets/pol_grid_v3_end.json` = trend value at base year **2019** (last year
+with 1-year changes) for every moment, written as
+`v3 target + slope × (2019 − own midpoint)`. For the five non-fraction moments
+this is exactly the trend line. For the fractions it keeps the target's
+mean-percentile construction (§26.1) and adds the trend shift, so `v3_end − v3`
+is the trend alone.
+
+- **Extrapolated:** var Δ5 and kurt Δ5 (data end in base year 2015), 4 years
+  past the data. Marked in `output/pol_v3/trends/v3_end_meta.json`.
+- **Not extrapolated:** the level (data to 2020) and the four Δ1 moments.
+- Alignment caveat: by the year a change *ends*, the last Δ5 (2015→2020) and
+  the last Δ1 (2019→2020) end in the same year. By the change's midpoint they
+  are 2 years apart (2017.5 vs 2019.5). Following the brief, the base-year
+  convention is used; it is the most conservative reading (4 years of
+  extrapolation).
+
+**Targets v2 vs v3 vs v3_end**
+
+| moment | v2 | v3 | v3_end | v3_end vs v3 |
+|---|---|---|---|---|
+| var log earns | 0.7216 (`std_loginc²`) | **0.6912** (`std_resid²`) | 0.6308 | −8.7% |
+| var Δ1 | 0.2595 | 0.2595 | 0.2229 | −14.1% |
+| var Δ5 | 0.4765 | 0.4765 | 0.3585* | −24.8% |
+| kurt Δ1 | 15.24 | 15.24 | 16.17 | +6.1% |
+| kurt Δ5 | 9.878 | 9.878 | 11.61* | +17.5% |
+| frac Δ1 < 10% | 0.4499 | 0.4499 | 0.4732 | +5.2% |
+| frac Δ1 < 20% | 0.6694 | 0.6694 | 0.6950 | +3.8% |
+| frac Δ1 < 50% | 0.8431 | 0.8431 | 0.8562 | +1.6% |
+
+v3 differs from v2 in one target (−4.2%) and on the model side (ages 25–55).
+v3_end describes a different period altogether; it is a robustness test, not
+the baseline.
+
+---
+
 ## Open decisions (not yet settled)
 
 - **One-asset vs two-asset for Poland — REOPENED 2026-10-20 (§24.6).** On the

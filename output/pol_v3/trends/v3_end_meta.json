@@ -1,0 +1,46 @@
+{
+  "end_base_year": 2019,
+  "moments": {
+    "var_log_earns": {
+      "data_years": "2000-2020",
+      "extrapolated": false,
+      "extrapolation_years": 0
+    },
+    "var_d1": {
+      "data_years": "2000-2019",
+      "extrapolated": false,
+      "extrapolation_years": 0
+    },
+    "var_d5": {
+      "data_years": "2000-2015",
+      "extrapolated": true,
+      "extrapolation_years": 4
+    },
+    "kurt_d1": {
+      "data_years": "2000-2019",
+      "extrapolated": false,
+      "extrapolation_years": 0
+    },
+    "kurt_d5": {
+      "data_years": "2000-2015",
+      "extrapolated": true,
+      "extrapolation_years": 4
+    },
+    "frac_d1_lt_10": {
+      "data_years": "2000-2019",
+      "extrapolated": false,
+      "extrapolation_years": 0
+    },
+    "frac_d1_lt_20": {
+      "data_years": "2000-2019",
+      "extrapolated": false,
+      "extrapolation_years": 0
+    },
+    "frac_d1_lt_50": {
+      "data_years": "2000-2019",
+      "extrapolated": false,
+      "extrapolation_years": 0
+    }
+  },
+  "note": "trend value at GRID base year 2019; d5 series end in 2015 (2015->2020), so their 2019 value is a 4-year linear extrapolation"
+}

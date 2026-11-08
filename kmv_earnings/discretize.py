@@ -212,7 +212,8 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
         target = model_moments(params, **sk)["var_log_earns"]
         got = moments_from_panel(
             simulate_discrete_panel(_combine(dict(out)), n_workers=sk["n_workers"],
-                                    n_years_keep=sk["n_years_keep"])
+                                    n_years_keep=sk["n_years_keep"]),
+            n_age_cols=sk.get("n_age_cols"),
         )["var_log_earns"]
         if got > 0:
             s = np.sqrt(target / got)
@@ -257,9 +258,11 @@ def simulate_discrete_panel(disc: dict, n_workers: int = 50_000,
     return logy
 
 
-def discretized_moments(params: dict, disc: dict | None = None, **sim_kwargs) -> dict:
+def discretized_moments(params: dict, disc: dict | None = None,
+                        n_age_cols: int | None = None, **sim_kwargs) -> dict:
     disc = disc or discretize_process(params)
-    return moments_from_panel(simulate_discrete_panel(disc, **sim_kwargs))
+    return moments_from_panel(simulate_discrete_panel(disc, **sim_kwargs),
+                              n_age_cols=n_age_cols)
 
 
 def diagnose(params: dict, disc: dict) -> dict:

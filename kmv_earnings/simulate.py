@@ -123,7 +123,16 @@ def simulate_log_annual_earnings(
     return logy
 
 
-def moments_from_panel(logy: np.ndarray) -> dict:
+def moments_from_panel(logy: np.ndarray, n_age_cols: int | None = None) -> dict:
+    """8 target moments from a (workers x years-of-age) panel.
+
+    `n_age_cols`: if set, use only the first `n_age_cols` columns (ages), e.g.
+    31 = ages 25-55 of the 36-year (25-60) panel, matching GRID's age window
+    (DECISIONS Sec 26). 1y/5y changes are then taken within that window only.
+    None (default) uses every column, exactly as before.
+    """
+    if n_age_cols is not None:
+        logy = logy[:, :n_age_cols]
     var_log = float(np.mean(np.var(logy, axis=0)))
     d1 = (logy[:, 1:] - logy[:, :-1]).ravel()
     d5 = (logy[:, 5:] - logy[:, :-5]).ravel()
@@ -144,5 +153,13 @@ def moments_from_panel(logy: np.ndarray) -> dict:
     }
 
 
-def model_moments(params: dict, **sim_kwargs) -> dict:
-    return moments_from_panel(simulate_log_annual_earnings(params, **sim_kwargs))
+def model_moments(params: dict, n_age_cols: int | None = None, **sim_kwargs) -> dict:
+    """`n_age_cols` as in moments_from_panel. With a lifecycle panel the first
+    k simulated years do not depend on how many years follow (same RNG calls,
+    in the same order), so only min(n_years_keep, n_age_cols) years are
+    simulated -- identical moments, less work (tests/test_age_window.py)."""
+    if n_age_cols is not None and sim_kwargs.get("lifecycle", True):
+        sim_kwargs = dict(sim_kwargs)
+        sim_kwargs["n_years_keep"] = min(sim_kwargs.get("n_years_keep", 36), n_age_cols)
+    return moments_from_panel(simulate_log_annual_earnings(params, **sim_kwargs),
+                              n_age_cols=n_age_cols)

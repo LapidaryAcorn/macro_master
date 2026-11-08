@@ -33,7 +33,7 @@ def build_table(targets: dict, params: dict, sim_kwargs: dict,
                 disc_kwargs: dict | None = None) -> pd.DataFrame:
     m_est = model_moments(params, **sim_kwargs)
     disc = discretize_process(params, **(disc_kwargs or {}))
-    disc_keys = {"n_workers", "n_years_keep", "lifecycle"}
+    disc_keys = {"n_workers", "n_years_keep", "lifecycle", "n_age_cols"}
     m_disc = discretized_moments(params, disc=disc,
                                  **{k: v for k, v in sim_kwargs.items() if k in disc_keys})
     rows = []
