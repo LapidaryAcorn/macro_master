@@ -1,0 +1,152 @@
+{
+  "Poland v3": {
+    "params": {
+      "lambda1": 0.16232761234604587,
+      "beta1": 2.8007290611663973,
+      "sigma1": 1.9975936019873402,
+      "lambda2": 0.010037381174618847,
+      "beta2": 0.005665285091573943,
+      "sigma2": 1.1925923072173314
+    },
+    "econ": {
+      "half_life_1_yr": 0.06187203094462088,
+      "years_between_shocks_1": 1.5400953441430307,
+      "erg_sd_1_additive": 0.3400578400675067,
+      "erg_sd_1_reset": 0.3352350542289174,
+      "half_life_2_yr": 30.58748012482517,
+      "years_between_shocks_2": 24.906895100503476,
+      "erg_sd_2_additive": 1.1224741016693356,
+      "erg_sd_2_reset": 0.817373905687626,
+      "erg_var_total_additive": 1.37558744350976,
+      "erg_var_total_reset": 0.7804826432829094
+    },
+    "cont_moments_25_55": {
+      "var_log_earns": 0.6907227703803344,
+      "var_d1": 0.26157587192270015,
+      "var_d5": 0.4758069251384981,
+      "kurt_d1": 14.412962507019452,
+      "kurt_d5": 9.974493990922696,
+      "frac_d1_lt_10": 0.47857533333333335,
+      "frac_d1_lt_20": 0.6562436666666667,
+      "frac_d1_lt_50": 0.8358863333333333
+    },
+    "cont_moments_25_60": {
+      "var_log_earns": 0.7460607850356945,
+      "var_d1": 0.261999550484895,
+      "var_d5": 0.47648253852818206,
+      "kurt_d1": 14.437237974498569,
+      "kurt_d5": 9.931776757068697,
+      "frac_d1_lt_10": 0.4785817142857143,
+      "frac_d1_lt_20": 0.6560691428571429,
+      "frac_d1_lt_50": 0.8359251428571428
+    }
+  },
+  "KMV Table 3": {
+    "params": {
+      "lambda1": 0.08,
+      "beta1": 0.761,
+      "sigma1": 1.74,
+      "lambda2": 0.007,
+      "beta2": 0.009,
+      "sigma2": 1.53
+    },
+    "econ": {
+      "half_life_1_yr": 0.22770932344282038,
+      "years_between_shocks_1": 3.125,
+      "erg_sd_1_additive": 0.3989210151733197,
+      "erg_sd_1_reset": 0.3888328834293147,
+      "half_life_2_yr": 19.25408834888737,
+      "years_between_shocks_2": 35.714285714285715,
+      "erg_sd_2_additive": 0.954122633627355,
+      "erg_sd_2_reset": 0.8095999011857647,
+      "erg_var_total_additive": 1.0694879763469118,
+      "erg_var_total_reset": 0.806643011235955
+    },
+    "cont_moments_25_55": {
+      "var_log_earns": 0.6503070254285771,
+      "var_d1": 0.22706841742367842,
+      "var_d5": 0.50121497639409,
+      "kurt_d1": 14.614888354638454,
+      "kurt_d5": 10.82895077687312,
+      "frac_d1_lt_10": 0.5477076666666667,
+      "frac_d1_lt_20": 0.658944,
+      "frac_d1_lt_50": 0.840228
+    },
+    "cont_moments_25_60": {
+      "var_log_earns": 0.688648006873658,
+      "var_d1": 0.2272310982308574,
+      "var_d5": 0.5019917858679801,
+      "kurt_d1": 14.604166955897732,
+      "kurt_d5": 10.753280982795529,
+      "frac_d1_lt_10": 0.5470388571428572,
+      "frac_d1_lt_20": 0.6587474285714285,
+      "frac_d1_lt_50": 0.8400854285714285
+    }
+  },
+  "Poland v3 chain (5x15)": {
+    "chain_props": {
+      "n_states": 75,
+      "ergodic_var_log_e": 1.5134917166553643,
+      "prob_stay_same_state_annual": 0.8492053072435628,
+      "prob_stay_same_state_quarterly": 0.9011297364029698,
+      "exp_years_top_decile": 3.1166746272889934,
+      "exp_years_bottom_decile": 3.1166746272889503,
+      "autocorr_log_e_annual": 0.8936221521082933,
+      "mass_on_extreme_states": 2.3091059132932356e-05
+    },
+    "chain_moments_25_55": {
+      "var_log_earns": 0.6916544532137919,
+      "var_d1": 0.17516284739872426,
+      "var_d5": 0.40565806799549053,
+      "kurt_d1": 17.02469413430995,
+      "kurt_d5": 10.57757566801645,
+      "frac_d1_lt_10": 0.6592153333333334,
+      "frac_d1_lt_20": 0.6761543333333333,
+      "frac_d1_lt_50": 0.8309343333333333
+    }
+  },
+  "KMV Table 3, our chain (5x15)": {
+    "chain_props": {
+      "n_states": 75,
+      "ergodic_var_log_e": 1.1614549605539202,
+      "prob_stay_same_state_annual": 0.8034379474522013,
+      "prob_stay_same_state_quarterly": 0.9020831332705206,
+      "exp_years_top_decile": 3.044962809721971,
+      "exp_years_bottom_decile": 3.0449628097214236,
+      "autocorr_log_e_annual": 0.8269786045142162,
+      "mass_on_extreme_states": 1.1143470441703913e-05
+    },
+    "chain_moments_25_55": {
+      "var_log_earns": 0.6472408374313864,
+      "var_d1": 0.21796876333155313,
+      "var_d5": 0.4875400353353566,
+      "kurt_d1": 14.052047609066792,
+      "kurt_d5": 10.432180168371273,
+      "frac_d1_lt_10": 0.650013,
+      "frac_d1_lt_20": 0.7266823333333333,
+      "frac_d1_lt_50": 0.869033
+    }
+  },
+  "KMV published chain (3x11)": {
+    "chain_props": {
+      "n_states": 33,
+      "ergodic_var_log_e": 0.8464405848163195,
+      "prob_stay_same_state_annual": 0.8455197924691311,
+      "prob_stay_same_state_quarterly": 0.9254465544321048,
+      "exp_years_top_decile": 1.831201429692332,
+      "exp_years_bottom_decile": 1.8312014296923738,
+      "autocorr_log_e_annual": 0.7256823548106891,
+      "mass_on_extreme_states": 0.0005265104084474481
+    },
+    "chain_moments_25_55": {
+      "var_log_earns": 0.5203371765592861,
+      "var_d1": 0.2395537149085907,
+      "var_d5": 0.5069995391702385,
+      "kurt_d1": 11.4521932865644,
+      "kurt_d5": 9.558352935556497,
+      "frac_d1_lt_10": 0.718876,
+      "frac_d1_lt_20": 0.7299426666666666,
+      "frac_d1_lt_50": 0.8221973333333333
+    }
+  }
+}

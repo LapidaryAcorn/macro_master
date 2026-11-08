@@ -5,7 +5,7 @@ lifecycle panel -- Sec 29.5 for why KMV's own published process differs).
 
 Figures -> output/pol_v3/figures/:
   d1_distribution.png   1-year changes: model CDF with GRID percentiles, density
-                        (log scale), tails (log survival of |change|)
+                        (log scale), one-sided tails P(change > x), P(change < -x)
   d5_distribution.png   5-year changes: same panels (GRID publishes no
                         percentiles of 5-year changes; the data enter as a normal
                         with GRID's variance, for scale only)
@@ -117,23 +117,24 @@ def main():
             ax[0].plot(d, F, color=col[lab], lw=1.4, label=f"model: {lab}")
             h, e = np.histogram(d, bins=np.linspace(-4, 4, 161), density=True)
             ax[1].semilogy(0.5 * (e[1:] + e[:-1]), np.where(h > 0, h, np.nan), color=col[lab], lw=1.2, label=lab)
-            ad = np.sort(np.abs(d)); S = 1 - (np.arange(len(ad)) + 0.5) / len(ad)
-            ax[2].semilogy(ad, S, color=col[lab], lw=1.4, label=lab)
+            # one-sided survival, comparable with GRID's one-sided percentiles
+            ax[2].semilogy(d, 1 - F, color=col[lab], lw=1.4, label=f"{lab}: P(change > x)")
+            ax[2].semilogy(-d, F, color=col[lab], lw=1.0, ls="--", label=f"{lab}: P(change < -x)")
             stats[f"{lab}_d{gap}_var"] = float(d.var())
         if gap == 1:
             ax[0].plot(dq, PROBS, "o", ms=5, mfc="white", mec="k",
                        label="GRID Poland (mean percentiles 2000-19)")
-            ax[2].semilogy(np.abs(dq[PROBS > 0.5]), 1 - PROBS[PROBS > 0.5], "^", ms=5,
-                           mfc="white", mec="k", label="GRID, upper percentiles (1 - p)")
-            ax[2].semilogy(np.abs(dq[PROBS < 0.5]), PROBS[PROBS < 0.5], "v", ms=5,
-                           mfc="white", mec="0.4", label="GRID, lower percentiles (p)")
+            ax[2].semilogy(dq[PROBS > 0.5], 1 - PROBS[PROBS > 0.5], "^", ms=5,
+                           mfc="white", mec="k", label="GRID: P(change > x) = 1 - p")
+            ax[2].semilogy(-dq[PROBS < 0.5], PROBS[PROBS < 0.5], "v", ms=5,
+                           mfc="white", mec="0.4", label="GRID: P(change < -x) = p")
         x = np.linspace(-4, 4, 400)
         sd = np.sqrt(stats[f"Poland v3_d{gap}_var"] if gap == 1 else var_d5_data)
         ax[1].semilogy(x, norm.pdf(x, scale=sd), ":", color="0.5", label="normal, same variance")
         ax[0].set_xlim(-2, 2); ax[0].set_title(f"CDF, {gap}-year change"); ax[0].legend(fontsize=7)
         ax[1].set_ylim(1e-4, 20); ax[1].set_title("density (log scale)"); ax[1].legend(fontsize=7)
         ax[2].set_xlim(0, 4); ax[2].set_ylim(1e-5, 1)
-        ax[2].set_title(f"tails: P(|change| > x) (log scale)"); ax[2].legend(fontsize=7)
+        ax[2].set_title("one-sided tails (log scale)"); ax[2].legend(fontsize=7)
         for x_ in ax:
             x_.set_xlabel(f"{gap}-year change in log earnings")
         fig.tight_layout(); fig.savefig(os.path.join(a.out, fname), dpi=130); plt.close(fig)

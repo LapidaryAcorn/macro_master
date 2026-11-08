@@ -2862,6 +2862,168 @@ formula value (1.386 vs 1.260 for z₂ in v3, §8c).
 
 ---
 
+## 28. Poland v3 vs KMV: figures, process table, grid size (D, E, F; 2026-11-08)
+
+The Poland side uses the canonical v3 estimate (§26.5) and the KMV side the
+Table 3 parameters. Continuous-process statistics are simulated with the same
+code and design as the estimation: additive jumps, a lifecycle panel from
+z = 0, ages 25–55. "KMV published chain" is
+`annual-review/inputs/kmv_process` (3 × 11, the chain step 2 uses). Under §29.5
+that chain was built for KMV's *reset* process, so it is not our process at KMV
+parameters.
+
+### 28.1 Figures (D)
+
+Scripts and files:
+- script `scripts/pol_v3_figures.py`;
+- output `output/pol_v3/figures/`;
+- numbers in `figure_stats.json`.
+
+| file | content | reading |
+|---|---|---|
+| `d1_distribution.png` | 1-yr changes: CDF with the GRID percentiles (mean 2000–19), log density, one-sided log survival P(Δ > x) and P(Δ < −x) | see below |
+| `d5_distribution.png` | the same for 5-yr changes. GRID gives no Δ5 percentiles, so the data enter as a normal with the target variance. | Poland and KMV are close; both are far from normal |
+| `qq_vs_data.png` | model vs GRID quantiles of Δ1 (p1 … p99.99) | see below |
+| `var_by_age.png` | var(log y) by age, 25–60 (56–60 shaded: outside the v3 window) | Poland and KMV coincide up to age ≈ 38; then Poland keeps rising, to 1.05 at 55 vs KMV 0.92. Mean over 25–55: 0.691 vs 0.661 |
+| `sample_paths.png` | quarterly z₁, z₂, z₁ + z₂ for 6 workers | Poland's z₁ is a sequence of very short spikes. z₂ moves in rare jumps with slow drift |
+| `impulse_response.png` | E[z(t)] after a +1 sd jump, both components | see below |
+| `ergodic_chain.png` | ergodic distribution of log e on the chains | Poland 5×15 has var 1.51; KMV at Table 3 on our 5×15, 1.16; KMV published 3×11, 0.85 |
+
+The tail panel was first drawn as P(|Δ| > x) against GRID's one-sided
+percentiles, which overstates the model tail by about 2×. It was redrawn
+one-sided before this section was written. The readings below refer to the
+corrected figure.
+
+**1-year changes vs GRID** (quantiles of Δ1):
+
+| p | 1 | 5 | 25 | 37.5 | 50 | 62.5 | 75 | 95 | 99 | 99.9 | 99.99 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| GRID PL | −2.00 | −0.71 | −0.04 | +0.011 | +0.048 | +0.089 | +0.150 | +0.73 | +1.61 | +2.51 | +3.15 |
+| Poland v3 | −1.68 | −0.75 | −0.11 | −0.024 | 0.000 | +0.019 | +0.106 | +0.77 | +1.71 | +3.04 | +4.29 |
+| KMV T3 | −1.49 | −0.69 | −0.08 | −0.008 | 0.000 | +0.003 | +0.063 | +0.72 | +1.65 | +2.94 | +4.18 |
+
+- **The body fits well**, from p5 to p99, within about 0.1 log points.
+- **The centre is shifted.** GRID's residualized changes have median +0.05,
+  while the model is symmetric around 0 by construction. This is the source of
+  the "too many changes < 10%" misfit: the model's mass at 0 sits where the
+  data have little, because the data are centred at +5%. This is a property of
+  the target, not a parameter problem. The model has no drift term and cannot
+  fit a non-zero median.
+- **Tails are asymmetric in the data and symmetric in the model.**
+  - The data's lower tail at p1 is heavier: −2.00 vs −1.68. That is large
+    falls, i.e. exits to near-zero earnings.
+  - The extreme upper tail is much thinner in the data: p99.99 is 3.15 vs
+    4.29, and P(Δ > 2.5) is about 0.001 in GRID vs about 0.003 in the model.
+  - So the model's kurtosis comes partly from upper-tail mass the data do not
+    have. KMV's process has the same feature.
+  - This cannot be fixed within the KMV family (symmetric normal jumps). It is
+    a known limitation, reported here and not acted on.
+
+**Impulse responses.**
+- **Transitory component.** Poland: σ₁ = 2.00, half-life 0.062 yr (≈ 3 weeks).
+  KMV: 1.74, 0.23 yr. Poland's "transitory" shocks are larger and almost
+  immediately undone. Within a year they show up mostly as a mean shift of
+  annual earnings, scaled by the share of the year left. KMV's last about a
+  quarter.
+- **Persistent component.**
+  - Poland: σ₂ = 1.19, half-life 31 yr. KMV under the additive reading: 1.53,
+    19 yr.
+  - Poland's persistent jumps are smaller but much more durable. After about 18
+    years the two responses cross.
+  - Under KMV's own reset reading (§29.5) the expected response decays at
+    β + λ, a half-life of ≈ 11 yr (dashed line). On that reading Poland's
+    persistence is even further above KMV's.
+
+### 28.2 Process table: Poland v3 vs KMV (E)
+
+Script `scripts/pol_v3_vs_kmv.py table`. Output in
+`output/pol_v3/vs_kmv/{vs_kmv.md, vs_kmv.json}`. Rates are quarterly.
+
+**Parameters and economic quantities**
+
+| | Poland v3 | KMV Table 3 |
+|---|---|---|
+| λ₁ / β₁ / σ₁ | 0.162 / 2.80 / 2.00 | 0.080 / 0.761 / 1.74 |
+| λ₂ / β₂ / σ₂ | 0.0100 / 0.00567 / 1.19 | 0.007 / 0.009 / 1.53 |
+| years between transitory shocks | 1.54 | 3.13 |
+| years between persistent shocks | 24.9 | 35.7 |
+| half-life z₁ / z₂ (yr) | 0.062 / 30.6 | 0.23 / 19.3 |
+| ergodic sd z₁, additive formula λσ²/(2β) | 0.340 | 0.399 |
+| ergodic sd z₂, additive formula | **1.122** | **0.954** |
+| ergodic sd z₂, reset formula λσ²/(λ+2β) | 0.817 | 0.810 |
+| ergodic var(z₁+z₂), additive / reset | 1.376 / 0.781 | 1.069 / 0.807 |
+
+The reset-formula row applies KMV's specification to *both* parameter sets.
+Poland's parameters were estimated under additive jumps, so "Poland, reset
+formula" is **not** a valid Poland number. It only shows that the gap between
+the two rows comes almost entirely from the formula. The like-for-like
+comparison is additive vs additive (1.12 vs 0.95). The
+specification-consistent one needs a Poland re-estimate under resets (§29.5,
+not run).
+
+**Continuous-process moments** (simulated, 100k workers, ages 25–55; in brackets
+25–60)
+
+| moment | Poland v3 | KMV Table 3 | PL target v3 |
+|---|---|---|---|
+| var log earns | 0.691 (0.746) | 0.650 (0.689) | 0.691 |
+| var Δ1 | 0.262 | 0.227 | 0.260 |
+| var Δ5 | 0.476 | 0.501 | 0.477 |
+| kurt Δ1 | 14.41 | 14.61 | 15.24 |
+| kurt Δ5 | 9.97 | 10.83 | 9.88 |
+| frac < 10% | 0.479 | 0.548 | 0.450 |
+| frac < 20% | 0.656 | 0.659 | 0.669 |
+| frac < 50% | 0.836 | 0.840 | 0.843 |
+
+- At ages 25–55 KMV's process gives a level of 0.65, below its own 0.70
+  target. That target was matched on 25–60 under our design (0.69).
+- Compared with KMV, Poland has more 1-year variance, less 5-year variance,
+  and fewer small changes.
+
+**Chains** (log e; annual statistics from the quarterly generator;
+simulated chain moments on ages 25–55, 100k workers, starting from the state
+nearest z = 0)
+
+| | Poland v3 chain (5×15) | KMV T3, our 5×15 | KMV published (3×11) |
+|---|---|---|---|
+| states | 75 | 75 | 33 |
+| ergodic var(log e) | **1.513** | 1.161 | 0.846 |
+| P(stay in same state), annual | 0.849 | 0.803 | 0.846 |
+| P(stay), quarterly | 0.901 | 0.902 | 0.925 |
+| expected years in top decile | 3.12 | 3.05 | 1.83 |
+| expected years in bottom decile | 3.12 | 3.05 | 1.83 |
+| annual autocorrelation of log e | 0.894 | 0.827 | 0.726 |
+| ergodic mass on the extreme states | 2e-5 | 1e-5 | 5e-4 |
+| chain var log earns | 0.692 | 0.647 | 0.520 |
+| chain var Δ1 | 0.175 | 0.218 | 0.240 |
+| chain var Δ5 | 0.406 | 0.488 | 0.507 |
+| chain kurt Δ1 | 17.0 | 14.1 | 11.5 |
+| chain kurt Δ5 | 10.6 | 10.4 | 9.6 |
+| chain frac < 10 / 20 / 50% | 0.66 / 0.68 / 0.83 | 0.65 / 0.73 / 0.87 | 0.72 / 0.73 / 0.82 |
+
+The deciles are symmetric because both chains are symmetric in log e.
+
+Readings:
+- **Poland's chain is more persistent and more dispersed than either KMV
+  chain.** Its autocorrelation is 0.89, against 0.83 and 0.73. Its ergodic
+  variance is 1.51, against 1.16 and 0.85.
+- **The two KMV chains differ a lot from each other.** Our discretization of
+  KMV's parameters gives an ergodic variance of 1.16, while KMV's published
+  chain gives 0.85. That gap is the additive vs reset specification (§29.5).
+- For the HANK block, **the right benchmark for "Poland vs KMV" in step 2 is
+  KMV T3 on our 5×15 chain**, which uses the same method and the same
+  specification. Using the published 3×11 chain would add the specification
+  difference to the country difference.
+- Our 5×15 chain has very little mass on the extreme states, because the grid
+  is wide. KMV's 3×11 has 25× more.
+
+### 28.3 Grid size (F)
+
+_Pending: runs last in the pipeline, so that the timings are not taken under
+CPU contention._
+
+---
+
 ## 29. How KMV (and GKOS) actually did it — and where we differ (G, 2026-11-08)
 
 **Sources obtained.** Saved locally to `inputs/kmv_method/` and `inputs/gkos/`
