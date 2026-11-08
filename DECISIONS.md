@@ -2766,6 +2766,100 @@ v3 differs from v2 in one target (−4.2%) and on the model side (ages 25–55).
 v3_end describes a different period altogether; it is a robustness test, not
 the baseline.
 
+### 26.5 Estimation of Poland v3 (B.1)
+
+Script `scripts/pol_v3_estimate.py`. Setup:
+- estimation panel: 50k workers, ages 25–55 (`n_age_cols=31`), CRN;
+- DE: 5 seeds (7, 101, 202, 303, 404), maxiter 200, popsize 15, NM polish 800;
+- TikTak: n_sobol 4096, n_local 30;
+- warm start at KMV Table 3;
+- every start re-evaluated out of sample on a 100k panel (seed 987654).
+
+The canonical estimate is the start with the lowest OOS f. Per-start results
+are in `output/pol_v3/runs/*.json`, and the summary is `output/pol_v3/report.json`.
+
+**Spread across the six starts** (rates quarterly; var₂ = λ₂σ₂²/(2β₂); hl₂ =
+half-life of z₂ in years):
+
+| start | f in-sample | f OOS | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ | hl₂ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **DE seed 404** | 0.00734 | **0.00762** | 0.1623 | 2.801 | 1.998 | 0.01004 | 0.005665 | 1.193 | 1.260 | 30.6 |
+| DE seed 202 | 0.00734 | 0.00762 | 0.1623 | 2.802 | 1.999 | 0.01004 | 0.005667 | 1.192 | 1.259 | 30.6 |
+| DE seed 101 | 0.00734 | 0.00762 | 0.1623 | 2.800 | 1.997 | 0.01004 | 0.005703 | 1.194 | 1.255 | 30.4 |
+| DE seed 7 | 0.00735 | 0.00764 | 0.1624 | 2.801 | 1.998 | 0.01004 | 0.005665 | 1.193 | 1.260 | 30.6 |
+| DE seed 303 | 0.00735 | 0.00764 | 0.1624 | 2.801 | 1.998 | 0.01004 | 0.005664 | 1.193 | 1.260 | 30.6 |
+| TikTak | 0.00751 | 0.00773 | 0.1609 | 2.829 | 2.011 | 0.01062 | 0.005216 | 1.143 | 1.331 | 33.2 |
+
+- **One basin.** The five DE seeds agree to 3–4 digits; their OOS f differ by
+  < 0.3%.
+- **TikTak lands on the same ridge, slightly worse.** It is 1.5% higher in OOS
+  f and moved along the known β₂/σ₂ direction (β₂ −8%, var₂ +5.6%, hl₂ +2.6
+  yr). This is the same pattern as §9/§18, the weakly identified persistent
+  component.
+- **No line scan was run.** The brief asks for one only if starts land in
+  different basins. The best two (DE 404 and DE 202) differ by at most 0.07% in
+  any parameter, so the trigger (> 10%) did not fire. The largest spread across
+  all six starts is β₂, 7.9% (TikTak vs the best).
+- **Not at a bound.** Log positions inside the bounds run from 0.50 to 0.80
+  (λ₂ 0.50, β₂ 0.53).
+
+**Fit of the eight moments** (OOS panel, canonical; discretized = 5×15 chain
+with `match_var_log`):
+
+| moment | target v3 | model | rel. error | chain 5×15 |
+|---|---|---|---|---|
+| var log earns | 0.6912 | 0.690 | −0.1% | 0.693 |
+| var Δ1 | 0.2595 | 0.261 | +0.8% | 0.176 |
+| var Δ5 | 0.4765 | 0.475 | −0.2% | 0.409 |
+| kurt Δ1 | 15.24 | 14.51 | −5.4% | 17.02 |
+| kurt Δ5 | 9.878 | 9.954 | +1.0% | 10.55 |
+| frac < 10% | 0.4499 | 0.480 | +6.4% | 0.659 |
+| frac < 20% | 0.6694 | 0.657 | −2.0% | 0.676 |
+| frac < 50% | 0.8431 | 0.837 | −0.9% | 0.831 |
+
+The misfit pattern is the same as in v2: kurt Δ1 too low, too many small
+changes. The chain's known biases (§8d: var Δ1 −32%, mass at < 10%) are
+unchanged.
+
+**v2 vs v3 (canonical estimates).** v2 is the DE estimate from
+`output/pol_v2/params.json`, on a 36-year panel.
+
+| | v2 | v3 | change |
+|---|---|---|---|
+| λ₁ | 0.1623 | 0.1623 | 0.0% |
+| β₁ | 2.832 | 2.801 | −1.1% |
+| σ₁ | 2.001 | 1.998 | −0.2% |
+| λ₂ | 0.00987 | 0.01004 | +1.7% |
+| β₂ | 0.006376 | 0.005665 | −11.2% |
+| σ₂ | 1.209 | 1.193 | −1.3% |
+| OOS f | 0.00728 | 0.00762 | (different targets and age window: not comparable) |
+| var₁ (ergodic, additive formula) | 0.115 | 0.116 | |
+| **var₂** | **1.132** | **1.260** | **+11.3%** |
+| ergodic sd z₂ | 1.064 | 1.122 | +5.5% |
+| ergodic sd z₁ + z₂ | 1.117 | 1.173 | |
+| half-life z₁ (yr) | 0.061 | 0.062 | |
+| half-life z₂ (yr) | 27.2 | 30.6 | +3.4 yr |
+| years between persistent shocks | 25.3 | 24.9 | |
+| chain ergodic var(log e), 5×15 exported | 1.38 | 1.51 | +9.6% |
+
+Chain values are computed from the exported `income_process_{grid,pi}.txt`.
+`match_var_log` scales the persistent component's chain variance above the
+formula value (1.386 vs 1.260 for z₂ in v3, §8c).
+
+**What changed relative to v2, and why.**
+- The transitory component is unchanged. Its moments (var Δ1, kurt Δ1,
+  fractions) are the same targets in v2 and v3.
+- The level target fell 4.2% (0.722 → 0.691), yet **var₂ rose 11%**. The
+  model side changed too: v3 averages the cross-sectional variance over ages
+  25–55 only, i.e. without the five oldest, most dispersed ages of a panel that
+  starts from z = 0. The average variance per unit of var₂ is therefore lower,
+  and matching a level only 4% lower needs a larger ergodic variance and a
+  slower drift (β₂ −11%).
+- So v3 does not soften the v2 conclusion. Poland's long-run dispersion is
+  higher in v3. On the additive formula it is 1.26 vs KMV's 0.91 (sd 1.12 vs
+  0.95). On KMV's own reset specification KMV's value is 0.655 (sd 0.81, §29.5).
+  The gap to KMV is not like-for-like in either case (§29.5).
+
 ---
 
 ## 29. How KMV (and GKOS) actually did it — and where we differ (G, 2026-11-08)
