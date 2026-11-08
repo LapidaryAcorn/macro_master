@@ -2957,6 +2957,83 @@ ones in brackets):
     would widen (ii). It was not run; T = 16–21 years is too short for
     meaningful blocks.
 
+### 26.7 Profile, recovery, nested specs for Poland v3 (B.3)
+
+Script: `scripts/pol_v3_robustness.py`. Outputs:
+- `output/pol_v3/{var2_profile, recovery, nested_specs}/`;
+- `output/pol_v3/robustness_summary.json`.
+
+Budget as in §21–§23: DE 100 × 12, NM 400, 50k workers, ages 25–55, OOS on
+the 100k panel (seed 987654).
+
+**var₂ profile.** var₂ = λ₂σ₂²/(2β₂) is pinned at m × 1.260 and the other
+five parameters are re-estimated, starting from the canonical estimate. A
+5 × 15 chain is exported for every point (`var2_profile/chain_*`), ready for
+step 2.
+
+| m | var₂ | ergodic sd z₂ | OOS f | f / f_min | worst moments |
+|---|---|---|---|---|---|
+| 0.6 | 0.756 | 0.869 | 0.02178 | ×2.86 | var log −10.8%, var Δ5 +6.8% |
+| 0.8 | 1.008 | 1.004 | 0.00906 | ×1.19 | frac<10 +6.5%, kurt Δ1 −5.2%, var Δ5 +3.0% |
+| 0.9 | 1.134 | 1.065 | 0.00787 | ×1.03 | (as at the optimum) |
+| **1.0 (control)** | **1.260** | **1.122** | **0.00762** | 1 | frac<10 +6.4%, kurt Δ1 −5.4% |
+| 1.1 | 1.386 | 1.177 | 0.00776 | ×1.02 | (as at the optimum) |
+| 1.25 | 1.575 | 1.255 | 0.00829 | ×1.09 | var Δ5 −2.4% |
+| 1.5 | 1.890 | 1.375 | 0.00921 | ×1.21 | var Δ5 −3.8% |
+
+- **The control point reproduces the canonical f exactly** (0.00762), so the
+  pinned re-estimation finds the optimum again.
+- **The profile has a clear minimum at 1.0×.** It is flat within ±10%
+  (+2–3% in f), and the level and var Δ5 start to bind outside it.
+- **It is asymmetric.** It rises steeply toward low var₂: at 0.8× f is +19%,
+  at 0.6× ×2.9, with the level 11% too low. Toward high var₂ it is flatter:
+  +9% at 1.25×, +21% at 1.5×.
+- **KMV's additive anchor 0.91 (≈ 0.72×) lies on the steep side.**
+  Interpolating between 0.6× and 0.8×, f there is
+  about ×1.5–1.8 the minimum (the profile is convex, so linear interpolation
+  gives the upper end).
+- Compared with v2 (§24.5), the shape is the same, shifted up by roughly the
+  11% change in the point estimate.
+
+**Recovery.**
+- Design: "true" parameters = canonical v3. The targets are the model moments
+  on a panel with a different seed (101 or 202) and size (50k or 300k).
+  Re-estimation starts from **KMV Table 3**, i.e. far from the truth.
+
+| rep | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | ergodic sd z₂ (true 1.122) | f |
+|---|---|---|---|---|---|---|---|---|
+| 101, 50k | +4.5% | +7.1% | −0.4% | +0.9% | −0.2% | −0.8% | 1.120 | 2e-5 |
+| 101, 300k | +0.9% | +0.5% | 0.0% | −1.2% | −1.5% | +0.3% | 1.128 | 0 |
+| 202, 50k | +1.3% | +0.1% | −0.4% | −3.7% | +0.3% | +1.9% | 1.121 | 0 |
+| 202, 300k | +4.6% | +6.0% | −0.4% | −0.7% | −1.5% | +0.4% | 1.132 | 2e-5 |
+
+- **4 / 4 recover the true basin.** β₂ is within ±1.5% and the ergodic sd of
+  z₂ within +1%. The same holds in v2 (4/4); v1 had 1 failure in 4.
+- **The persistent component is recovered better than the transitory one.**
+  λ₁ and β₁ miss by up to 4.5% and 7%, which is the size of their asymptotic
+  SE (§27, 5–6%). This supports §27's view that the bootstrap understates the
+  uncertainty of (λ₁, β₁): those parameters really do move by 5% with
+  simulation noise alone.
+
+**Nested specifications** (re-estimated with the same budget):
+
+| variant | free params | OOS f | × full | worst moment | v2: × full |
+|---|---|---|---|---|---|
+| full | 6 | 0.00762 | 1 | frac<10 +6.4% | 1 |
+| V1 single component | 3 | 0.460 | ×60 | var log −59%, frac<10 +25% | ×66 |
+| V2 deterministic arrival (AR(1)) | 2 | 2.34 | ×307 | kurt Δ1 −80%, kurt Δ5 −70% | ×324 |
+| V3 β₂ = 0 (random walk) | 5 | 0.0166 | **×2.2** | var Δ5 −8.8%, var log +3.5% | ×3.1 |
+
+- **The conclusions are as in v2 (§24.9).**
+  - Without jumps (V2) the kurtoses cannot be fitted at all.
+  - With one component (V1) the level and the 1-yr fractions cannot both be
+    fitted.
+  - Of the restrictions, only the random walk (V3) is close to the full model.
+- V3 is relatively better in v3 than in v2 (×2.2 vs ×3.1): with the window cut
+  at 55, the persistent component's mean reversion matters less. It is still
+  rejected. f is 2.2× higher, var Δ5 is 9% too low and the level 3.5% too
+  high, the profile signature of β₂ → 0.
+
 ---
 
 ## 27. Asymptotic SMM standard errors for Poland v3 (C, 2026-11-08)
