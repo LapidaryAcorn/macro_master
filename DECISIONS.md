@@ -2860,6 +2860,206 @@ formula value (1.386 vs 1.260 for z₂ in v3, §8c).
   0.95). On KMV's own reset specification KMV's value is 0.655 (sd 0.81, §29.5).
   The gap to KMV is not like-for-like in either case (§29.5).
 
+### 26.6 Bootstrap of Poland v3 (B.4)
+
+Script: `scripts/pol_v3_bootstrap.py`. Output: `output/pol_v3/bootstrap/`.
+
+**Setup.** 200 reps per design, with the same reduced budget as §19/§24.11:
+- 5k workers, DE 10×5, NM 50;
+- warm start at the canonical estimate;
+- ages 25–55.
+
+**Two designs:**
+- **(i) `years`**: resample the 21 years with replacement (§19 design). Each
+  moment is the mean over the years drawn that have that moment, so the
+  shorter Δ5/Δ1 series carry fewer draws.
+- **(ii) `detrended`**: resample whole year vectors of the detrended residuals
+  (`trend_residuals.csv`, §26.3) and add them to the trend at its midpoint
+  (= the v3 target). This removes the 2000–2020 trend from the variability, so
+  only fluctuations around the trend remain.
+
+**Validation of the reduced budget.** 3 resamples per design, re-estimated at
+both budgets (reduced vs §19's reference budget: 15k workers, DE 20×6, NM 100), in
+`validation.json`. Deviations, reduced vs reference:
+
+| | relative deviation |
+|---|---|
+| σ₁, σ₂ | ≤ 1% |
+| λ₁, β₁, λ₂ | −1% to −4%, mean −2% |
+| **β₂** | **0% to −12%, mean −5.6%** |
+
+Every deviation is below §19's 15% threshold. **But the β₂ deviation is
+systematic.** The reduced budget lands lower on the β₂/σ₂ ridge, i.e. at a
+higher var₂. This shows up as an upward shift of the bootstrap means (var₂
+1.32–1.33 vs point estimate 1.26), and §24.11 had the same shift (β₂ −3.7%).
+Below I therefore report the SEs and **recentred** percentile intervals
+(percentiles shifted by mean − point). The raw percentiles are in
+`bootstrap_summary.csv`.
+
+**Resampled targets.** The SD across reps is smaller under (ii) than under (i):
+
+| moment | (i) years | (ii) detrended |
+|---|---|---|
+| level | 0.0102 | 0.0062 |
+| var Δ5 | 0.0126 | 0.0038 |
+| kurt Δ5 | 0.204 | 0.105 |
+| var Δ1 | 0.0058 | 0.0026 |
+| kurt Δ1 | 0.253 | 0.211 |
+
+So most of the year-to-year variability in the variances is the trend itself.
+The kurtosis of Δ1 is mostly noise around the trend.
+
+**Results**
+
+| | point | SE (i) years | rel. | SE (ii) detrended | rel. |
+|---|---|---|---|---|---|
+| λ₁ | 0.1623 | 0.0038 | 2.4% | 0.0026 | 1.6% |
+| β₁ | 2.801 | 0.066 | 2.4% | 0.059 | 2.1% |
+| σ₁ | 1.998 | 0.011 | 0.5% | 0.0073 | 0.4% |
+| λ₂ | 0.01004 | 0.00042 | 4.2% | 0.00025 | 2.5% |
+| β₂ | 0.005665 | 0.00063 | **11.1%** | 0.00031 | **5.6%** |
+| σ₂ | 1.193 | 0.019 | 1.6% | 0.010 | 0.9% |
+| var₂ | 1.260 | 0.097 | 7.7% | 0.050 | 3.9% |
+| ergodic sd z₂ | 1.122 | 0.042 | 3.7% | 0.022 | 1.9% |
+| half-life z₂ (yr) | 30.6 | 3.7 | 12.0% | 1.9 | 6.1% |
+
+**95% intervals for the persistent component** (recentred percentiles; raw
+ones in brackets):
+
+| | (i) years | (ii) detrended |
+|---|---|---|
+| var₂ | **[1.06, 1.44]** ([1.12, 1.50]) | **[1.17, 1.35]** ([1.24, 1.41]) |
+| ergodic sd z₂ | [1.03, 1.20] | [1.08, 1.16] |
+| half-life z₂ (yr) | [23.1, 36.8] | [26.9, 34.1] |
+
+**Readings.**
+- **(ii) halves the SEs of the persistent component compared with (i).** Under
+  (i), resampling years treats the 2000–2020 decline in dispersion as noise. A
+  draw heavy in early years has a high level and a high var Δ5. Under (ii) only
+  deviations from the trend remain. Which one is "right" depends on what the
+  target is meant to be:
+  - if it is the mean of a stationary process observed over 21 years, use (i);
+  - if it is the midpoint of a trending process, use (ii).
+  - The trend is strongly significant (§26.3), so (ii) is the more coherent
+    description of uncertainty around **this** target. (i) is the conservative
+    upper bound. Both are reported.
+- **The two designs agree on the transitory component** (SEs of 0.4–2.4%).
+  They differ only in how they weigh the persistent one.
+- **Both intervals exclude the additive KMV anchor (var₂ 0.91)** by a wide
+  margin. The lower ends are 1.06 and 1.17, and v2's CI was [1.00, 1.28].
+- Caveats, as in §19 and §24.11:
+  - this is year-to-year variability of the GRID statistics, not microdata
+    sampling error;
+  - every rep is warm-started at the point estimate, so the intervals are
+    conditional on its basin. §26.5 found one basin.
+  - The years are treated as independent, but the residuals carry the
+    2008–09 level shift, i.e. they are serially correlated. A block bootstrap
+    would widen (ii). It was not run; T = 16–21 years is too short for
+    meaningful blocks.
+
+---
+
+## 27. Asymptotic SMM standard errors for Poland v3 (C, 2026-11-08)
+
+Script: `scripts/pol_v3_smm_se.py`. Output: `output/pol_v3/smm_se/{smm_se.csv,
+smm_se.json}`. The estimate is the canonical v3 (§26.5).
+
+    V = (G'WG)⁻¹ G'W (Ω_data + Ω_sim) W G (G'WG)⁻¹
+
+**Ingredients.**
+- **W = diag(1/m̂²).** These are exactly the weights of our objective. W is
+  not the efficient weighting matrix, hence the full sandwich.
+- **G = ∂m/∂θ** (8 × 6), by central differences in log θ on a 200k-worker
+  panel with common random numbers (seed 1234, ages 25–55).
+  - Two step sizes, h = 0.02 and 0.05 in logs.
+  - Median elementwise relative difference between them: 0.45%. The largest
+    differences are in single near-zero elements: σ₁ column 34%, β₂ column 23%.
+  - **Resulting SEs change by ≤ 2% for β₂/var₂ and ≤ 10% for σ₂ and λ₂.**
+    So G is stable enough. The table below uses h = 0.02.
+- **Ω_data**: covariance of the annual statistics divided by the number of
+  years, because each target is a mean over years. The series have different
+  lengths (level 21, Δ1 20, Δ5 16 years), so element (j, k) is
+  s_jk · n_jk / (T_j T_k), with s_jk taken over the n_jk common years. Two
+  versions:
+  - **detrended**: residuals from the §26.3 linear trends (divisor n − 2);
+  - **raw**: deviations from the window mean (divisor n − 1).
+- **Ω_sim**: covariance of the model moments across 60 simulation seeds, on
+  the estimation-size panel (50k workers). One panel with CRN is used in
+  estimation, so the simulation error enters once, with no 1/S factor.
+
+SD of each moment, data (detrended / raw) vs simulation:
+
+| | var log | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | frac<10 | frac<20 | frac<50 |
+|---|---|---|---|---|---|---|---|---|
+| data, detrended | 0.0070 | 0.0030 | 0.0040 | 0.237 | 0.106 | 0.0083 | 0.0051 | 0.0020 |
+| data, raw | 0.0114 | 0.0059 | 0.0128 | 0.264 | 0.206 | 0.0087 | 0.0061 | 0.0027 |
+| simulation (50k) | 0.0052 | 0.0010 | 0.0022 | 0.129 | 0.067 | 0.0005 | 0.0004 | 0.0004 |
+
+The data SDs match the bootstrap target SDs in §26.6 to within 10–30%. That is
+the expected agreement between an analytical s/√T and a resampling SD.
+Simulation noise matters only for the level and the kurtoses, where it is
+50–75% of the detrended data SD.
+
+**Standard errors** (relative SE in %; "+sim" adds Ω_sim):
+
+| | detrended + sim | detrended | raw + sim | raw | sim only | boot (ii) detrended | boot (i) years |
+|---|---|---|---|---|---|---|---|
+| λ₁ | 5.2 | 4.8 | 5.0 | 4.7 | 1.9 | 1.6 | 2.4 |
+| β₁ | 6.0 | 5.6 | 5.9 | 5.4 | 2.3 | 2.1 | 2.4 |
+| σ₁ | 0.5 | 0.4 | 0.7 | 0.6 | 0.3 | 0.4 | 0.5 |
+| λ₂ | 3.2 | 2.8 | 4.1 | 3.8 | 1.5 | 2.5 | 4.2 |
+| β₂ | **6.7** | 6.3 | **15.4** | 15.2 | 2.3 | **5.6** | **11.1** |
+| σ₂ | 1.1 | 0.8 | 1.8 | 1.6 | 0.8 | 0.9 | 1.6 |
+| var₂ (abs. SE) | **0.059** | 0.053 | **0.126** | 0.123 | 0.026 | **0.050** | **0.097** |
+| erg. sd z₂ | 0.026 | 0.024 | 0.056 | 0.055 | 0.011 | 0.022 | 0.042 |
+| half-life z₂ (yr) | 2.1 | 1.9 | 4.7 | 4.6 | 0.7 | 1.9 | 3.7 |
+
+Derived quantities use the delta method with numerical gradients.
+
+**Comparison with the bootstraps.**
+- **The persistent component agrees.**
+  - Asymptotic detrended vs bootstrap (ii): var₂ 0.053 vs 0.050, β₂ 6.3% vs
+    5.6%, λ₂ 2.8% vs 2.5%, σ₂ 0.8% vs 0.9%.
+  - Raw vs bootstrap (i): var₂ 0.123 vs 0.097, β₂ 15% vs 11%, σ₂ 1.6% vs
+    1.6%, λ₂ 3.8% vs 4.2%.
+  - So the conclusions in §26.6 do not depend on the method. The raw
+    asymptotic SE is about 25% above the years bootstrap for β₂/var₂, which is
+    plausible for a nonlinear map evaluated at T = 16–21.
+  - With Ω_sim added (an honest total), var₂ = 1.26 ± 0.06 (detrended) or
+    ± 0.13 (raw). That gives 95% intervals of about [1.14, 1.38] and
+    [1.01, 1.51]. Both exclude 0.91.
+- **The transitory component does not agree.** λ₁ and β₁ have asymptotic SEs
+  of 5–6%, against 1.6–2.4% from the bootstrap. Two candidate reasons; the
+  data here cannot separate them:
+  - **The bootstrap understates.** The reduced budget (DE 10×5, NM 50, warm
+    start) moves λ₁/β₁ only a little from the starting point. The validation
+    in §26.6 shows reduced-vs-reference deviations of −2% on average for λ₁
+    and β₁, the same order as the bootstrap SE itself. So the bootstrap does
+    not resolve these parameters well.
+  - **The asymptotic SE overstates.** The σ₁ column of G is the least stable
+    (34%), and the information on (λ₁, β₁) comes almost entirely from the
+    near-zero fractions and kurt Δ1. A linearization there is rough.
+  - In either case the transitory parameters are well determined in economic
+    terms (half-life 3 weeks ± a few days). They do not affect the step-2
+    conclusions, which run through the persistent component.
+- G'WG has condition number 3·10⁷. This reflects the scale of the parameters
+  (β₂ ≈ 0.006 against β₁ ≈ 2.8), not near-singularity in logs. The relative SEs
+  (`relse_*` in the CSV) are scale-free.
+
+**Caveat (required by the brief).** Ω_data is **the variability of the annual
+GRID statistics across years**, not sampling error from the microdata behind
+each annual statistic. GRID publishes no microdata standard errors, and with
+roughly 10⁵–10⁶ workers per year that error is probably smaller than the
+year-to-year variation. These SEs therefore answer "how much would the estimate
+move if the 2000–2020 years had been different draws from the same
+(detrended or stationary) process", not "how precisely is a given year
+measured". Two further assumptions:
+- years are independent. The residuals carry the 2008–09 level shift, so they
+  are not, and both the asymptotic and the bootstrap SEs are probably
+  somewhat too small;
+- the model is correctly specified. The J-type misfit in kurt Δ1 and
+  frac < 10% (§26.5) is not reflected in the SEs.
+
 ---
 
 ## 28. Poland v3 vs KMV: figures, process table, grid size (D, E, F; 2026-11-08)
