@@ -2902,6 +2902,16 @@ parameters (400k workers):
   2016 WP's process, not the published one.** The published process, KMV's own
   chain and the port all use resets.
 
+**A third check: the ergodic variance of KMV's chain.** The published 33-state
+chain has ergodic var(log e) = **0.846** (`hank_step2/results/baseline.json`).
+At Table 3 parameters the reset process implies λσ²/(λ + 2β) summed over the
+two components = 0.151 + 0.655 = **0.81**; the additive process implies
+**1.07**. STEP2_LOG §S5 read the 0.85 as "a specific 33-state discretization,
+not KMV's target" and took 1.07 as KMV's value. Under the published (reset)
+specification 0.85 is simply the chain matching its own process to within 5%.
+That 1.07 anchor (STEP2_LOG, §25 table, the GER/USA pin) is the additive formula
+applied to reset estimates.
+
 **Why it matters for the thesis conclusion.**
 - Under resets, the ergodic variance of a component is λσ²/(λ + 2β), not
   λσ²/(2β). The "KMV anchor" used throughout (§8b, `KMV_ERGODIC_VAR2 = 0.9103`
