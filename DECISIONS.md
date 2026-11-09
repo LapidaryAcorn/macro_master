@@ -3034,6 +3034,74 @@ step 2.
   rejected. f is 2.2× higher, var Δ5 is 9% too low and the level 3.5% too
   high, the profile signature of β₂ → 0.
 
+### 26.8 v3_end: estimation on the end-of-window trend targets (B.2)
+
+Setup: `scripts/pol_v3_estimate.py --version v3_end`, 3 DE seeds
+(7, 101, 202) plus TikTak, same budget as B.1. Outputs:
+`output/pol_v3_end/{runs/, report.json, params.json, table2.csv}`.
+
+| start | f in | f OOS | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ |
+|---|---|---|---|---|---|---|---|---|
+| **TikTak** | 0.00663 | **0.00691** | 0.1577 | 2.821 | 1.950 | 0.00679 | 0.000104 | 1.126 |
+| DE 101 | 0.00654 | 0.00694 | 0.1601 | 2.900 | 1.949 | 0.00683 | **0.0001** | 1.124 |
+| DE 202 | 0.00654 | 0.00698 | 0.1624 | 2.985 | 1.950 | 0.00683 | **0.0001** | 1.124 |
+| DE 7 | 0.00654 | 0.00699 | 0.1625 | 2.985 | 1.950 | 0.00683 | **0.0001** | 1.124 |
+
+**β₂ goes to its lower bound (10⁻⁴) in every start.** The three DE seeds
+sit exactly on it, and TikTak 4% above it. The persistent component becomes
+a **random walk with jumps** (half-life about 1700 years). The formula value
+var₂ = λσ²/(2β) ≈ 41 is meaningless: there is no ergodic distribution.
+
+- **No line scan was needed.** All four starts are in the same corner. The
+  best two differ by at most 4% (β₁).
+- **No chain could be exported.** `discretize_process` correctly refuses a
+  component with no stationary distribution. `finalize` was changed to write
+  the report and `table2.csv` without a chain. That was a code fix after the
+  pipeline stopped at this point; the run results are unchanged.
+- **Fit** (OOS):
+  - level −1.0%, var Δ1 −0.4%, var Δ5 +2.2%;
+  - kurt Δ1 −4.6%, kurt Δ5 0.0%;
+  - fractions +6.2% / −1.9% / −0.3%.
+  - f = 0.0069, as good as v3. The model has no trouble fitting the
+    end-of-window targets; it just wants no mean reversion.
+- **Why β₂ → 0.**
+  - The v3_end targets combine a lower level (0.631) with relatively high
+    kurtosis and a var Δ5 that is low relative to the level.
+  - In a lifecycle panel from z = 0, β₂ is identified only by the *curvature*
+    of variance by age over 31 years. At β₂ ≈ 0 variance grows linearly:
+    v3_end gives var at 25/35/45/55 = 0.11/0.46/0.80/1.14, against v3's
+    0.13/0.59/0.87/1.05. So v3_end has lower dispersion at young ages and
+    higher at 55.
+  - Two of the targets that drive this (var Δ5, kurt Δ5) are **4-year
+    extrapolations** (§26.4). The corner solution therefore rests partly on
+    an extrapolated linear trend through a series with a level shift around
+    2008–09.
+- **Bound issue, decision.**
+  - The bound is not lowered. Below 10⁻⁴ the half-life is already longer
+    than the working life, so within the 31-year panel β₂ = 10⁻⁴ and β₂ = 0
+    are observationally the same. Lowering the bound would only move the
+    point along a flat direction.
+  - v3_end stays a **robustness check only**, as the brief says. It is not
+    usable as a HANK input as it stands: the stationary step-2 model needs an
+    ergodic distribution, which this process does not have.
+  - What it shows: **the end-of-window data push toward more, not less,
+    persistence**. If anything, that strengthens the "high long-run
+    dispersion" conclusion.
+
+**v2 vs v3 vs v3_end**
+
+| | v2 | **v3 (baseline)** | v3_end |
+|---|---|---|---|
+| λ₁ / β₁ / σ₁ | 0.162 / 2.83 / 2.00 | 0.162 / 2.80 / 2.00 | 0.158 / 2.82 / 1.95 |
+| λ₂ / β₂ / σ₂ | 0.0099 / 0.0064 / 1.21 | 0.0100 / 0.0057 / 1.19 | 0.0068 / **0.0001 (bound)** / 1.13 |
+| OOS f | 0.0073 | 0.0076 | 0.0069 |
+| var₂ (additive formula) | 1.13 | 1.26 | none (random walk) |
+| ergodic sd z₂ | 1.06 | 1.12 | none |
+| half-life z₂ (yr) | 27 | 31 | ≈ 1700 |
+| half-life z₁ (yr) | 0.061 | 0.062 | 0.061 |
+| var(log y) at age 55, model | n/a (36-yr panel) | 1.05 | 1.14 |
+| worst-fit moment | frac<10 +6.6% | frac<10 +6.4% | frac<10 +6.2% |
+
 ---
 
 ## 27. Asymptotic SMM standard errors for Poland v3 (C, 2026-11-08)
@@ -3296,8 +3364,48 @@ Readings:
 
 ### 28.3 Grid size (F)
 
-_Pending: runs last in the pipeline, so that the timings are not taken under
-CPU contention._
+Script: `scripts/pol_v3_vs_kmv.py grid`, run as the **last** pipeline step,
+with no other computation on the machine. Output: `output/pol_v3/vs_kmv/grid_size.*`.
+
+Setup:
+- the Poland v3 chain on four grids, each with `match_var_log` at ages 25–55;
+- chain moments from 100k simulated workers, ages 25–55;
+- the time is one steady-state solve of the `hank_step2` household block
+  (`hh_ha.steady_state` at the baseline betas, median of 5 runs after a
+  warm-up);
+- relative gaps are chain vs continuous process.
+
+| grid | states | ss solve (s) | ergodic var(log e) | var log | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | frac<10 | frac<20 | frac<50 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| KMV published 3×11 | 33 | 0.38 | 0.85 | | | | | | | | |
+| 3×11 | 33 | 0.38 | 1.516 | +0.1% | −33.8% | −14.2% | **−22.1%** | −6.5% | +56.9% | +16.5% | +3.7% |
+| 3×15 | 45 | 0.66 | 1.517 | +0.2% | −34.0% | −15.1% | −21.2% | −4.1% | +55.8% | +16.3% | +4.1% |
+| 5×11 | 55 | 0.84 | 1.512 | +0.1% | −32.8% | −13.9% | **+16.9%** | +3.6% | +38.7% | +3.2% | −1.0% |
+| **5×15 (default)** | 75 | 1.14 | 1.513 | +0.1% | −33.0% | −14.7% | +18.1% | +6.0% | +37.7% | +3.0% | −0.6% |
+
+Readings:
+- **The number of points for the transitory component (3 vs 5) matters; the
+  number for the persistent one (11 vs 15) does not.**
+  - With 3 points, kurt Δ1 is 22% too low and the < 10% fraction 56% too
+    high.
+  - With 5 points, kurt Δ1 is 17–18% too high and the < 10% fraction 38% too
+    high.
+  - 11 → 15 persistent points changes no moment by more than 2 pp.
+- **var Δ1 is about −33% on every grid.** This is the §8d bias, a property of
+  discretizing a fast-reverting component at quarterly frequency, not of grid
+  size. Its fix stays on the open list (§8d).
+- **Time is not a constraint.** Even 75 states solve in about 1.1 s.
+  - An earlier smoke test under full CPU load (v2 parameters, while DE was
+    running) gave 14.5 s and 122 s for the 5-point grids, and 0.57 s for
+    the KMV 3×11 reference.
+  - The 3×11 reference slowed only 1.5×, the 5-point grids about 100×, so
+    contention alone does not explain the difference. The cause was not
+    investigated: the parameters also differed (v2 vs v3). The clean final
+    measurement above is the one to use, but if step 2 ever shows slow
+    solves on 5-point chains, this is where to look.
+  - The "chain size for step 2" item in Open decisions is therefore settled:
+    **keep 5×15** (§14). If speed ever matters, 5×11 gives the same moments
+    at 0.84 s.
 
 ---
 
@@ -3488,6 +3596,63 @@ Fortran matches the port.
 
 ---
 
+## 30. Summary of the v3 stage (2026-11-09)
+
+**Done** (one commit per step, all pushed):
+
+| item | where | result in one line |
+|---|---|---|
+| A1 v3 targets | §26.1, `targets/pol_grid_v3.json` | level = mean `std_resid²` 2000–20 = 0.691 (v2: 0.722) |
+| A2 ages 25–55 option | §26.2, `tests/test_age_window.py` | `n_age_cols=31`; default bit-identical (test) |
+| A3 trends | §26.3, `output/pol_v3/trends/` | variances fall significantly; kurt Δ5 rises; level shift around 2008–09 |
+| A4 v3_end targets | §26.4, `targets/pol_grid_v3_end.json` | trend at 2019; var Δ5 and kurt Δ5 extrapolated 4 yrs |
+| B1 estimation | §26.5 | 5 DE + TikTak, one basin; canonical DE 404, var₂ 1.26, hl₂ 31 yr |
+| B2 v3_end | §26.8 | β₂ at the lower bound in every start (random walk); robustness only |
+| B3 profile / recovery / nested | §26.7 | minimum at 1.0×; KMV 0.91 on the steep side; recovery 4/4; nested specs as in v2 |
+| B4 bootstrap | §26.6 | var₂ 95%: [1.06, 1.44] (years), [1.17, 1.35] (detrended) |
+| C asymptotic SEs | §27 | match the bootstraps for the persistent component; larger for λ₁/β₁ (recovery supports the asymptotic ones) |
+| D figures | §28.1, `output/pol_v3/figures/` | body of Δ1 fits well; data centred at +5%, asymmetric tails |
+| E vs KMV table | §28.2, `output/pol_v3/vs_kmv/` | Poland more persistent and more dispersed than KMV on every measure |
+| F grid size | §28.3 | 3 vs 5 transitory points matters, 11 vs 15 does not; keep 5×15 (1.1 s) |
+| G KMV method | §29 | KMV's published process uses reset jumps; kurtosis weight 0.5; no SEs; 0.70 undocumented |
+
+**Does v3 change the main v2 conclusion (high long-run dispersion in Poland,
+above KMV)? No. It strengthens it, with one important qualification.**
+- v3's var₂ is 1.26 (sd 1.12), up from v2's 1.13 (sd 1.06), even though the
+  level target fell 4%. The age window explains it (§26.5).
+- Both bootstrap intervals and both asymptotic intervals exclude KMV's
+  additive-formula value 0.91. So does the profile (×1.5–1.8 the minimum f at
+  0.91). v3_end goes further, to no mean reversion at all.
+- **The qualification (§29.5)** is about specification, not statistics. KMV's
+  published process uses *reset* jumps. The anchor 0.91 is the *additive*
+  formula applied to KMV's reset estimates. KMV's own value, on their
+  specification, is 0.655 (sd 0.81).
+  - Against that the gap is even larger. But it compares an additive Poland
+    with a reset KMV, so it is not like-for-like either way.
+  - The clean statement available now is "Poland vs KMV's parameters under
+    one and the same (additive) design": ergodic sd of z₂ 1.12 vs 0.95,
+    ergodic var(log e) on our 5×15 chains 1.51 vs 1.16 (§28.2).
+  - The specification-consistent statement needs a reset re-estimation of
+    Poland.
+
+**Left / recommended next** (not run):
+1. **Reset-jump re-estimation of Poland v3** (§29.5): a simulator option
+   (default unchanged), estimation with a lifecycle and an ergodic design, and
+   a supervisor decision on the baseline specification. First download the
+   KMV replication package (openICPSR 231376, §29) to confirm that the
+   original Fortran matches the port.
+2. A kurtosis-weight-0.5 variant of the objective (§29.6), a cheap robustness
+   check.
+3. Step 2 on the v3 chain (`output/pol_v3/income_process_*`):
+   - redo the §24.6 one-/two-asset trigger check (v2 failed it; v3 is *more*
+     dispersed, so a pass is unlikely);
+   - the profile chains `output/pol_v3/var2_profile/chain_0.80`–`0.90` are the
+     candidates for the lower-var₂ route inside the statistical band.
+4. The fraction-construction gap (§26.1) and the 2008–09 level shift
+   (§26.3/§26.6) are documented and not corrected.
+
+---
+
 ## Open decisions (not yet settled)
 
 - **One-asset vs two-asset for Poland — REOPENED 2026-10-20 (§24.6).** On the
@@ -3502,7 +3667,8 @@ Fortran matches the port.
   something like the GRID-USA treatment ("documented sensitivity") acceptable
   for Poland? Poland is the main country of the thesis, so probably not — to
   be confirmed.
-- **Robustness test for the level target (§24.3/§24.4): `std_resid` + model
+- **[Poland: DONE as v3, §26–§30, 2026-11-09; FRA/GER/USA deliberately not
+  recomputed.]** **Robustness test for the level target (§24.3/§24.4): `std_resid` + model
   moments on ages 25–55.** The baseline (§24.4) uses raw `std_log_inc²` and a
   36-year panel; the two biases offset to within a few percent. The fully
   consistent alternative is GRID `std_resid²` (`data/std resid.csv`, already
@@ -3557,8 +3723,16 @@ Fortran matches the port.
   USA/FRA in the unconstrained fit — see §8b) **has an institutional
   interpretation** worth developing in the text (sectoral bargaining, employment
   protection), or should be reported without one.
-- **Chain size for step 2:** 75 states is the current default; may need to drop
-  to 33 if the model solve is too slow.
+- ~~**Chain size for step 2:** 75 states is the current default; may need to drop
+  to 33 if the model solve is too slow.~~ **Settled (§28.3):** 5×15 solves in
+  ≈ 1.1 s; keep it.
+- **Jump specification: additive (ours, 2016 WP) vs reset (KMV AER, KMV chain,
+  code port) — NEW 2026-11-08, §29.5.** Affects every "vs KMV" comparison of
+  var₂. Needs the openICPSR package, a reset re-estimation of Poland, and a
+  supervisor decision on the baseline.
+- **v3_end puts β₂ at its lower bound (§26.8).** Robustness only, no chain.
+  Report as "the end-of-window data favour even more persistence"; no action
+  unless the supervisor wants v3_end as a HANK input.
 - ~~**One-asset vs two-asset model in step 2 — Poland is the trigger.**~~
   **[REOPENED 2026-10-20 — see the first item in this list and §24.6; the
   'resolved' below holds only for the v1 std_perm targets.]**

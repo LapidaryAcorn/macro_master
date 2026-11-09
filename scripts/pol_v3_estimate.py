@@ -34,6 +34,7 @@ import sys
 import time
 
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -157,9 +158,18 @@ def finalize(cfg: dict) -> None:
     tbl_sim = dict(n_workers=50_000, n_years_keep=36, n_age_cols=N_AGE_COLS)
     disc_kwargs = dict(match_var_log=True,
                        sim_kwargs=dict(n_workers=50_000, n_age_cols=N_AGE_COLS))
-    df, disc = build_table(targets, p_best, tbl_sim, disc_kwargs=disc_kwargs)
+    try:
+        df, disc = build_table(targets, p_best, tbl_sim, disc_kwargs=disc_kwargs)
+    except ValueError as e:
+        # e.g. beta2 at its lower bound: no ergodic distribution to discretize
+        print(f"\nno chain exported: {e}")
+        disc = None
+        m = model_moments(p_best, **tbl_sim)
+        df = pd.DataFrame({"Moment": MOMENT_ORDER, "Data": [targets[k] for k in MOMENT_ORDER],
+                           "Model Estimated": [round(m[k], 3) for k in MOMENT_ORDER]})
     df.to_csv(os.path.join(cfg["out"], "table2.csv"), index=False)
-    export_chain(disc, cfg["out"])
+    if disc is not None:
+        export_chain(disc, cfg["out"])
     save_params(p_best, os.path.join(cfg["out"], "params.json"))
     bounds = {k: float((np.log(p_best[k]) - np.log(DEFAULT_BOUNDS[k][0])) /
                        (np.log(DEFAULT_BOUNDS[k][1]) - np.log(DEFAULT_BOUNDS[k][0])))
@@ -171,7 +181,7 @@ def finalize(cfg: dict) -> None:
            "runs": [{k: r[k] for k in ("name", "params", "in_sample_f", "oos_f", "derived", "wall_s")}
                     for r in runs],
            "spread": spread, "two_best_maxdiff": maxdiff, "line_scan": scan,
-           "bounds_log_position": bounds, "chain_diagnostics": diagnose(p_best, disc),
+           "bounds_log_position": bounds, "chain_diagnostics": diagnose(p_best, disc) if disc is not None else None,
            "table2": df.to_dict(orient="records")}
     with open(os.path.join(cfg["out"], "report.json"), "w") as f:
         json.dump(rep, f, indent=2, default=float)
