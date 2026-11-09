@@ -70,6 +70,7 @@ def simulate_log_annual_earnings(
     burn_in_years: int = 0,
     seed: int = 1234,
     deterministic_arrival: bool = False,
+    reset_jumps: bool = False,
 ) -> np.ndarray:
     """
     Return log annual earnings, shape (n_workers, n_years_keep).
@@ -84,6 +85,13 @@ def simulate_log_annual_earnings(
     Bernoulli draw. Setting this True reproduces that nested special case
     (Task 2, DECISIONS.md 2026-10-11); lambda_j is then irrelevant for
     component j and should be fixed to an arbitrary placeholder.
+
+    `reset_jumps`: on arrival the component is REPLACED by eps, z_j -> eps,
+    instead of z_j -> z_j e^{-beta dt} + eps. This is the process in KMV's
+    replication code (rho = 0 in their Simulate.f90 / TransitionMatrix.f90)
+    and the AER text, eq. 33-34 (DECISIONS Sec 29.5, 29.7). Stationary
+    variance lam*sig^2/(lam + 2*beta). Default False = additive, bit-for-bit
+    unchanged (same RNG calls; tests/test_reset_jumps.py).
     """
     lam = np.array([params["lambda1"], params["lambda2"]]) / steps_per_quarter
     beta = np.array([params["beta1"], params["beta2"]]) / steps_per_quarter
@@ -96,8 +104,12 @@ def simulate_log_annual_earnings(
     z = np.zeros((n_workers, 2))
     if not lifecycle:
         # stationary variance of the jump-drift process: lam*sig^2/(2*beta)
+        # (additive) or lam*sig^2/(lam + 2*beta) (reset)
         for j in range(2):
-            sd = sig[j] * np.sqrt((lam[j] / (2 * beta[j])) if beta[j] > 0 else 0.0)
+            if reset_jumps:
+                sd = sig[j] * np.sqrt(lam[j] / (lam[j] + 2 * beta[j]))
+            else:
+                sd = sig[j] * np.sqrt((lam[j] / (2 * beta[j])) if beta[j] > 0 else 0.0)
             z[:, j] = rng.standard_normal(n_workers) * sd
 
     spy = 4 * steps_per_quarter                     # steps per year
@@ -113,7 +125,7 @@ def simulate_log_annual_earnings(
             u = rng.random(n_workers)
             eps = rng.standard_normal(n_workers) * sig[j]
             zd = z[:, j] * decay[j]
-            z[:, j] = np.where(u < p_jump[j], zd + eps, zd)
+            z[:, j] = np.where(u < p_jump[j], eps if reset_jumps else zd + eps, zd)
         if s >= burn_s:
             annual_flow += np.exp(z[:, 0] + z[:, 1])
             if (s - burn_s) % spy == spy - 1:

@@ -55,7 +55,11 @@ VERSIONS = {
                de_seeds=[7, 101, 202, 303, 404]),
     "v3_end": dict(targets="targets/pol_grid_v3_end.json", out="output/pol_v3_end",
                    de_seeds=[7, 101, 202]),
+    # robustness (Sec 29.8): KMV's reset jumps, otherwise identical to v3
+    "v3_reset": dict(targets="targets/pol_grid_v3.json", out="output/pol_v3_reset",
+                     de_seeds=[7, 101, 202], reset_jumps=True),
 }
+RESET = False                                     # set in main() from the version
 DE_KW = dict(maxiter=200, popsize=15, nm_maxiter=800)
 TT_KW = dict(n_sobol=4096, n_local=30, seed=11)
 
@@ -67,15 +71,20 @@ def rel_objective(m: dict, targets: dict) -> float:
 
 
 def derived(p: dict) -> dict:
-    v1 = theoretical_stationary_var(p["lambda1"], p["beta1"], p["sigma1"])
-    v2 = theoretical_stationary_var(p["lambda2"], p["beta2"], p["sigma2"])
-    # half-life in years of a component's deviation: ln 2 / beta (beta quarterly)
-    return {"var1": v1, "var2": v2, "erg_sd_z1": v1 ** 0.5, "erg_sd_z2": v2 ** 0.5,
-            "erg_sd_total": (v1 + v2) ** 0.5,
-            "half_life_1_yr": np.log(2) / p["beta1"] / 4,
-            "half_life_2_yr": np.log(2) / p["beta2"] / 4,
-            "years_between_shocks_1": 1 / p["lambda1"] / 4,
-            "years_between_shocks_2": 1 / p["lambda2"] / 4}
+    v1 = theoretical_stationary_var(p["lambda1"], p["beta1"], p["sigma1"], RESET)
+    v2 = theoretical_stationary_var(p["lambda2"], p["beta2"], p["sigma2"], RESET)
+    # half-life in years of a component's deviation: ln 2 / beta (beta quarterly);
+    # under resets E[z(t)] decays at beta + lambda (a jump wipes the deviation)
+    out = {"var1": v1, "var2": v2, "erg_sd_z1": v1 ** 0.5, "erg_sd_z2": v2 ** 0.5,
+           "erg_sd_total": (v1 + v2) ** 0.5,
+           "half_life_1_yr": np.log(2) / p["beta1"] / 4,
+           "half_life_2_yr": np.log(2) / p["beta2"] / 4,
+           "years_between_shocks_1": 1 / p["lambda1"] / 4,
+           "years_between_shocks_2": 1 / p["lambda2"] / 4}
+    if RESET:
+        out["half_life_1_expected_yr"] = np.log(2) / (p["beta1"] + p["lambda1"]) / 4
+        out["half_life_2_expected_yr"] = np.log(2) / (p["beta2"] + p["lambda2"]) / 4
+    return out
 
 
 def run_start(name: str, cfg: dict, args) -> None:
@@ -158,6 +167,9 @@ def finalize(cfg: dict) -> None:
     tbl_sim = dict(n_workers=50_000, n_years_keep=36, n_age_cols=N_AGE_COLS)
     disc_kwargs = dict(match_var_log=True,
                        sim_kwargs=dict(n_workers=50_000, n_age_cols=N_AGE_COLS))
+    if RESET:
+        tbl_sim["reset_jumps"] = True
+        disc_kwargs["reset_jumps"] = True
     try:
         df, disc = build_table(targets, p_best, tbl_sim, disc_kwargs=disc_kwargs)
     except ValueError as e:
@@ -198,6 +210,11 @@ def main():
     ap.add_argument("--finalize", action="store_true")
     args = ap.parse_args()
     cfg = VERSIONS[args.version]
+    global RESET
+    RESET = bool(cfg.get("reset_jumps", False))
+    if RESET:                                     # passed to pool workers as arguments
+        EST_SIM["reset_jumps"] = True
+        OOS_SIM["reset_jumps"] = True
     os.makedirs(os.path.join(cfg["out"], "runs"), exist_ok=True)
     if args.finalize:
         finalize(cfg)

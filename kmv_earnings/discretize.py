@@ -93,7 +93,9 @@ def component_grid_and_edges(n: int, sigma: float, zmax_mult: float = 3.5,
 
 
 def component_generator(grid: np.ndarray, edges: np.ndarray, lam: float,
-                        beta: float, sigma: float) -> np.ndarray:
+                        beta: float, sigma: float, reset_jumps: bool = False) -> np.ndarray:
+    """reset_jumps: jumps land on N(0, sigma^2) whatever the origin (KMV's
+    chain, rho = 0 in their TransitionMatrix.f90), instead of N(grid[k], sigma^2)."""
     n = len(grid)
     Q = np.zeros((n, n))
     for k in range(n):                       # drift toward zero (upwind)
@@ -106,8 +108,8 @@ def component_generator(grid: np.ndarray, edges: np.ndarray, lam: float,
             r = beta * (-g) / (grid[k + 1] - grid[k])
             Q[k, k + 1] += r
             Q[k, k] -= r
-    for k in range(n):                       # additive jumps
-        w = np.diff(norm.cdf(edges, loc=grid[k], scale=sigma))
+    for k in range(n):                       # additive (or reset) jumps
+        w = np.diff(norm.cdf(edges, loc=0.0 if reset_jumps else grid[k], scale=sigma))
         Q[k, :] += lam * w
         Q[k, k] -= lam
     return Q
@@ -120,8 +122,12 @@ def stationary_dist(P: np.ndarray) -> np.ndarray:
     return pi / pi.sum()
 
 
-def theoretical_stationary_var(lam: float, beta: float, sigma: float) -> float:
-    """Exact stationary variance of dz = -beta z dt + eps dN: lam*sigma^2/(2 beta)."""
+def theoretical_stationary_var(lam: float, beta: float, sigma: float,
+                               reset_jumps: bool = False) -> float:
+    """Exact stationary variance of dz = -beta z dt + eps dN: lam*sigma^2/(2 beta);
+    with reset jumps (z -> eps on arrival) lam*sigma^2/(lam + 2 beta)."""
+    if reset_jumps:
+        return lam * sigma ** 2 / (lam + 2.0 * beta)
     return lam * sigma ** 2 / (2.0 * beta)
 
 
@@ -146,7 +152,8 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
                        zmax_mult: float = 3.5, curv: float = 1.5,
                        rescale_variance: bool = True,
                        match_var_log: bool = False,
-                       sim_kwargs: dict | None = None):
+                       sim_kwargs: dict | None = None,
+                       reset_jumps: bool = False):
     """
     Discretize both components and build the combined chain.
 
@@ -159,6 +166,9 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
     match_var_log     additionally calibrate ONE global scale factor by
                  simulation so the chain reproduces the continuous process's
                  var(log annual earnings). Costs two simulations.
+    reset_jumps  discretize the reset-jump process (DECISIONS Sec 29.7); the
+                 continuous simulation in match_var_log then uses resets too.
+                 Default False = additive, unchanged.
 
     Raises ValueError if either component's theoretical stationary variance
     (lambda*sigma^2/(2*beta)) is infinite or implausibly large (> 5). A
@@ -183,7 +193,8 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
         "2": (params["lambda2"], params["beta2"], params["sigma2"], n2),
     }
     for name, (lam, beta, sig, n) in specs.items():
-        v = theoretical_stationary_var(lam, beta, sig) if beta > 0 else np.inf
+        v = (theoretical_stationary_var(lam, beta, sig, reset_jumps)
+             if beta > 0 or reset_jumps else np.inf)
         if not np.isfinite(v) or v > 5.0:
             raise ValueError(
                 f"component {name}: theoretical stationary variance "
@@ -196,12 +207,12 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
     out = {}
     for name, (lam, beta, sig, n) in specs.items():
         grid, edges = component_grid_and_edges(n, sig, zmax_mult, curv)
-        Q = component_generator(grid, edges, lam, beta, sig)
+        Q = component_generator(grid, edges, lam, beta, sig, reset_jumps)
         P = expm(Q)                           # quarterly transition matrix
         pi = stationary_dist(P)
         if rescale_variance and beta > 0:
             v_chain = float(pi @ (grid - pi @ grid) ** 2)
-            v_theory = theoretical_stationary_var(lam, beta, sig)
+            v_theory = theoretical_stationary_var(lam, beta, sig, reset_jumps)
             if v_chain > 0 and np.isfinite(v_theory):
                 grid = grid * np.sqrt(v_theory / v_chain)
         out[name] = {"grid": grid, "edges": edges, "Q": Q, "P": P, "pi": pi}
@@ -209,6 +220,8 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
     if match_var_log:
         sk = dict(n_workers=30_000, n_years_keep=36)
         sk.update(sim_kwargs or {})
+        if reset_jumps:
+            sk["reset_jumps"] = True
         target = model_moments(params, **sk)["var_log_earns"]
         got = moments_from_panel(
             simulate_discrete_panel(_combine(dict(out)), n_workers=sk["n_workers"],
@@ -220,7 +233,10 @@ def discretize_process(params: dict, n1: int = 5, n2: int = 15,
             for name in ("1", "2"):
                 out[name]["grid"] = out[name]["grid"] * s
 
-    return _combine(out)
+    out = _combine(out)
+    if reset_jumps:
+        out["reset_jumps"] = True
+    return out
 
 
 def simulate_discrete_panel(disc: dict, n_workers: int = 50_000,
@@ -273,7 +289,8 @@ def diagnose(params: dict, disc: dict) -> dict:
     for name, (lam, beta, sig) in specs.items():
         g, pi = disc[name]["grid"], disc[name]["pi"]
         rep[name] = {"chain_var": float(pi @ (g - pi @ g) ** 2),
-                     "theory_var": theoretical_stationary_var(lam, beta, sig),
+                     "theory_var": theoretical_stationary_var(lam, beta, sig,
+                                                             disc.get("reset_jumps", False)),
                      "n_states": len(g)}
     c = disc["combined"]
     rep["combined"] = {"n_states": len(c["zgrid"]),
