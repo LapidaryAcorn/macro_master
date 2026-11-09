@@ -3793,9 +3793,110 @@ workers, run separately; < 20% and < 50% were not recorded.
   additive jumps stands, on the ground of the working-paper specification
   (decision above), not on that test.
 
-### 29.8 Poland v3 re-estimated with reset jumps (robustness)
+### 29.8 Poland v3 re-estimated with reset jumps (robustness, not a baseline) (2026-11-09)
 
-_Running (3 DE seeds + TikTak); results to follow._
+**Setup.** `scripts/pol_v3_estimate.py --version v3_reset`, output
+`output/pol_v3_reset/`.
+- Identical to v3 (§26.5) except `reset_jumps=True`: the same targets
+  (`targets/pol_grid_v3.json`), ages 25–55, lifecycle panel from z = 0,
+  equal weights, CRN, the 5×15 chain.
+- Starts: 3 DE seeds (7, 101, 202) + TikTak, no bootstrap, as briefed.
+- Seed 202 was interrupted once (a broken pipe at 11:49, the machine
+  sleeping) and restarted. Finished starts are skipped on restart, so nothing
+  else was affected. The crash log is `logs/de_crash1.log`.
+
+**All four starts land on one point, with β₂ at its lower bound.**
+- The three DE seeds agree to 6 digits (OOS f 0.022525–0.022526). TikTak is
+  0.5% worse (0.02270) at the same point.
+- Canonical is `de_seed7`. β₂ = 1.0e−4 per quarter is the lower bound
+  (log position 0.00). The persistent component therefore has **no drift**:
+  it is constant between jumps and redrawn from N(0, σ₂²) on a jump.
+
+| parameter / derived | v3 additive (§26.5, DE 404) | **v3 reset** (DE 7) | spread across reset starts |
+|---|---|---|---|
+| λ₁ | 0.1623 | 0.1772 | 0.2% |
+| β₁ | 2.801 | 3.082 | 0.6% |
+| σ₁ | 1.998 | 1.944 | 0.05% |
+| λ₂ | 0.01004 | 0.01065 | 0.4% |
+| β₂ | 0.00567 | **0.0001 (bound)** | – |
+| σ₂ | 1.193 | 1.118 | 0.5% |
+| var₂, formula (additive λσ²/2β; reset λσ²/(λ+2β)) | 1.260 | 1.228 | 1.1% |
+| var₁, formula | 0.116 | 0.106 | |
+| **OOS f** | **0.00762** | **0.02253** (×3.0) | 0.0225–0.0227 |
+| in-sample f | 0.00734 | 0.02302 | |
+
+**Fit (OOS relative errors, model/data − 1).**
+
+| moment | data | v3 additive | v3 reset |
+|---|---|---|---|
+| var log | 0.691 | −0.1% | **−6.3%** (0.648) |
+| var Δ1 | 0.260 | +0.8% | −2.4% |
+| var Δ5 | 0.477 | −0.2% | **+8.8%** (0.519) |
+| kurt Δ1 | 15.24 | −5.4% | −7.1% |
+| kurt Δ5 | 9.88 | +1.0% | +4.2% |
+| < 10% | 0.450 | +6.4% | +5.4% |
+| < 20% | 0.669 | −2.0% | −1.8% |
+| < 50% | 0.843 | −0.9% | −0.9% |
+
+- The whole loss is in the **level and Δ5**. The transitory block (Δ1 moments)
+  is fitted about as well as under additive jumps.
+- This is §29.7 point 3 again, now in estimation. In a lifecycle panel from
+  z = 0 a reset cannot accumulate persistent variance: each jump replaces the
+  last one. Lowering β₂ to 0 is the only way left to raise the level. It
+  still falls 6% short, and it overshoots Δ5, because the remaining way to
+  build dispersion is large rare jumps.
+- So reset + our design is a **binding misspecification**: it fits 3× worse,
+  with a parameter on its bound. This is not evidence on which jump type is
+  "true". Under KMV's ergodic design the ranking flips (§29.7, D vs F). It is
+  evidence that the additive baseline is the internally consistent choice
+  for our lifecycle targets.
+
+**Ergodic variance of the chain (5×15, `match_var_log`).**
+
+| | v3 additive | v3 reset | KMV published chain (§29.9) |
+|---|---|---|---|
+| **total var(log e)** | **1.51** | **1.43** | **0.846** |
+| persistent z₂ (chain) | 1.39 | 1.32 | 0.647 |
+| transitory z₁ (chain) | 0.127 | 0.114 | 0.199 |
+| z₂ chain / formula | +10% | +7% | +7% (reset formula, unrounded) |
+
+- Under resets Poland's long-run dispersion falls only 5% (total) and 5%
+  (z₂). It is still **1.7× KMV's chain** in total and **2.0×** for the
+  persistent component.
+- So the main conclusion of v2/v3 (Poland is far more dispersed in the long
+  run than KMV) **does not depend on the jump specification**. This is the
+  like-for-like statement §30 asked for: reset Poland vs reset KMV, chain vs
+  chain.
+- Discretized moments (`table2.csv`) have the same pattern as in v3: var Δ1
+  0.170 vs 0.253 and < 10% 0.67 vs 0.48. The 5-point transitory grid cannot
+  reproduce the very short transitory spells (§28.3); the level, 0.646, is
+  matched by construction.
+
+**Half-lives of the persistent component.**
+
+| | v3 additive | v3 reset |
+|---|---|---|
+| drift only, ln2/β₂ | 30.6 yr | 1733 yr (β₂ at the bound: no drift) |
+| expected value, ln2/(β₂ + λ₂) (reset); ln2/β₂ (additive, jumps are mean zero) | **30.6 yr** | **16.1 yr** |
+| mean years between persistent jumps, 1/λ₂ | 24.9 yr | 23.5 yr |
+| transitory, expected | 0.062 yr | 0.053 yr |
+
+- Under resets the drift half-life is meaningless (no drift). The relevant
+  persistence measure is the autocorrelation of z₂, exp(−(β₂ + λ₂)t). Its
+  half-life is **16 years**: a persistent state lasts until the next jump,
+  on average 23.5 years, and is then forgotten entirely.
+- Under additive jumps a jump only adds to the past, so the half-life is the
+  drift's, 31 years.
+- The "persistence" of Poland therefore halves under resets, while the
+  dispersion barely moves. Step 2 should be read the same way: risk is
+  about as large, but less permanent.
+- Compared with KMV: KMV's z₂ autocorrelation half-life is
+  ln2/(β₂ + λ₂) = ln2/(0.00939 + 0.00656)/4 = 10.9 yr. Poland reset is 16 yr,
+  so it is still more persistent.
+
+**Not done.** There is no bootstrap (as briefed) and no ergodic-design
+estimation of Poland (not in the brief; it would also change how the targets
+map to the model, cf. the 4-yr gap in §29.7).
 
 ### 29.9 The KMV reference point: the published chain, not a formula (2026-11-09)
 
@@ -3833,9 +3934,9 @@ superseded additive anchor.
 **Comparing like with like.**
 - Chain vs chain, total var(log e):
   - Poland v3 additive (5×15): 1.51;
-  - Poland v3 reset (§29.8): the value is given there;
+  - Poland v3 reset (5×15, §29.8): 1.43;
   - KMV published (3×11): 0.85.
-- Persistent component, chain vs chain: Poland v3 1.39 vs KMV 0.65.
+- Persistent component, chain vs chain: Poland v3 1.39 (reset 1.32) vs KMV 0.65.
 - The chain/formula ratio is similar for both (Poland +10%, KMV +7% on z₂).
   So formula-based Poland intervals (§26.6, §27) can be read against 0.65.
 
@@ -3853,39 +3954,42 @@ superseded additive anchor.
 | A4 v3_end targets | §26.4, `targets/pol_grid_v3_end.json` | trend at 2019; var Δ5 and kurt Δ5 extrapolated 4 yrs |
 | B1 estimation | §26.5 | 5 DE + TikTak, one basin; canonical DE 404, var₂ 1.26, hl₂ 31 yr |
 | B2 v3_end | §26.8 | β₂ at the lower bound in every start (random walk); robustness only |
-| B3 profile / recovery / nested | §26.7 | minimum at 1.0×; KMV 0.91 on the steep side; recovery 4/4; nested specs as in v2 |
+| B3 profile / recovery / nested | §26.7 | minimum at 1.0×; KMV's published chain (z₂ 0.65) below the lowest profiled point (0.756, f ×2.9); the old 0.91 already on the steep side; recovery 4/4; nested specs as in v2 |
 | B4 bootstrap | §26.6 | var₂ 95%: [1.06, 1.44] (years), [1.17, 1.35] (detrended) |
 | C asymptotic SEs | §27 | match the bootstraps for the persistent component; larger for λ₁/β₁ (recovery supports the asymptotic ones) |
 | D figures | §28.1, `output/pol_v3/figures/` | body of Δ1 fits well; data centred at +5%, asymmetric tails |
 | E vs KMV table | §28.2, `output/pol_v3/vs_kmv/` | Poland more persistent and more dispersed than KMV on every measure |
 | F grid size | §28.3 | 3 vs 5 transitory points matters, 11 vs 15 does not; keep 5×15 (1.1 s) |
-| G KMV method | §29 | KMV's published process uses reset jumps; kurtosis weight 0.5; no SEs; 0.70 undocumented |
+| G KMV method | §29.1–29.7 | replication package: KMV's code uses reset jumps (ρ = 0); kurtosis weight 0.5; no SEs; 0.70 hard-coded; §1's 0.40 was a units slip |
+| reset robustness | §29.8, `output/pol_v3_reset/` | β₂ at the bound, OOS f ×3 worse; chain var(log e) 1.43 vs 1.51 additive; hl₂ 16 vs 31 yr |
+| KMV anchor | §29.9 | published chain: total 0.846, z₂ 0.647 (replaces 0.91 / 0.655) |
 
 **Does v3 change the main v2 conclusion (high long-run dispersion in Poland,
 above KMV)? No. It strengthens it, with one important qualification.**
 - v3's var₂ is 1.26 (sd 1.12), up from v2's 1.13 (sd 1.06), even though the
   level target fell 4%. The age window explains it (§26.5).
-- Both bootstrap intervals and both asymptotic intervals exclude KMV's
-  additive-formula value 0.91. So does the profile (×1.5–1.8 the minimum f at
-  0.91). v3_end goes further, to no mean reversion at all.
-- **The qualification (§29.5)** is about specification, not statistics. KMV's
-  published process uses *reset* jumps. The anchor 0.91 is the *additive*
-  formula applied to KMV's reset estimates. KMV's own value, on their
-  specification, is 0.655 (sd 0.81).
-  - Against that the gap is even larger. But it compares an additive Poland
-    with a reset KMV, so it is not like-for-like either way.
-  - The clean statement available now is "Poland vs KMV's parameters under
-    one and the same (additive) design": ergodic sd of z₂ 1.12 vs 0.95,
-    ergodic var(log e) on our 5×15 chains 1.51 vs 1.16 (§28.2).
-  - The specification-consistent statement needs a reset re-estimation of
-    Poland.
+- Both bootstrap intervals and both asymptotic intervals exclude the KMV
+  reference. That reference is now the published chain (§29.9): z₂ 0.647,
+  total 0.846. They already excluded the superseded 0.91. v3_end goes
+  further, to no mean reversion at all.
+- **The specification question (§29.5, §29.7–29.8) is settled for this
+  conclusion.**
+  - KMV's code uses reset jumps; our baseline stays additive, following the
+    working paper.
+  - Re-estimated with resets, Poland's chain has var(log e) 1.43 (additive
+    1.51) and z₂ 1.32 (1.39).
+  - Against KMV's published chain (0.846 / 0.647) Poland is 1.7× / 2.0× in
+    either specification, chain vs chain.
+  - What the specification does change is **persistence**: the half-life of
+    z₂ is 31 yr additive vs 16 yr reset (KMV reset: 11 yr). The reset fit is
+    3× worse, with β₂ on its bound, so the additive baseline is also the
+    better-fitting one in our design.
 
 **Left / recommended next** (not run):
-1. **Reset-jump re-estimation of Poland v3** (§29.5): a simulator option
-   (default unchanged), estimation with a lifecycle and an ergodic design, and
-   a supervisor decision on the baseline specification. First download the
-   KMV replication package (openICPSR 231376, §29) to confirm that the
-   original Fortran matches the port.
+1. ~~Reset-jump re-estimation of Poland v3~~ **Done (§29.7–29.8)**: option
+   `reset_jumps` (default bit-identical, `tests/test_reset_jumps.py`),
+   lifecycle design, 3 DE + TikTak. Not run: an ergodic-design estimation and
+   a reset bootstrap. Supervisor: confirm the additive baseline (§29.7).
 2. A kurtosis-weight-0.5 variant of the objective (§29.6), a cheap robustness
    check.
 3. Step 2 on the v3 chain (`output/pol_v3/income_process_*`):
@@ -3971,10 +4075,12 @@ above KMV)? No. It strengthens it, with one important qualification.**
 - ~~**Chain size for step 2:** 75 states is the current default; may need to drop
   to 33 if the model solve is too slow.~~ **Settled (§28.3):** 5×15 solves in
   ≈ 1.1 s; keep it.
-- **Jump specification: additive (ours, 2016 WP) vs reset (KMV AER, KMV chain,
-  code port) — NEW 2026-11-08, §29.5.** Affects every "vs KMV" comparison of
-  var₂. Needs the openICPSR package, a reset re-estimation of Poland, and a
-  supervisor decision on the baseline.
+- **Jump specification: additive (ours, 2016 WP) vs reset (KMV AER, KMV
+  code) — §29.5, updated 2026-11-09 (§29.7–29.8).** The package confirms
+  reset in KMV's code. Our baseline stays additive (working-paper
+  specification). The reset robustness run leaves the dispersion conclusion
+  unchanged (1.43 vs 1.51) and halves z₂ persistence (16 vs 31 yr). Left for
+  the supervisor: confirm the additive baseline.
 - **GER/USA `β₂` pins use the superseded KMV anchor (§29.9).** They were
   pinned to var₂ = 0.9103, our additive formula on KMV's parameters. KMV's
   published chain has 0.647 for the persistent component. FRA/GER/USA are
