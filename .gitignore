@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 logs/
+
+# KMV replication package (openICPSR 231376): third-party, local only.
+data/kmv_replication/
+data/KMV_replication/
