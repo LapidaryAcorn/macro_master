@@ -126,6 +126,16 @@ The `dN_j` term is additive by construction.
 Only the additive version reproduces their reported model moments; the reset
 version misses badly (e.g. var(Δ1y) ≈ 0.40 against a target of 0.23).
 
+**Erratum (2026-11-09, §29.7).** This verification does not hold. With
+correct units every reset implementation gives var Δ1 ≈ 0.23 at Table 3
+parameters. The 0.40 is reproduced only with rates 4× too fast, most likely
+a units slip in the original check (not kept). The jump type matters for the
+level and Δ5 through the sampling design (lifecycle vs ergodic), not for
+var Δ1. KMV's own code (replication package) uses resets. The additive
+choice stands because the working paper (NBER w21897 §4.3, CEP 2016 eq. 31)
+writes the process additively. The reset version is a robustness check
+(§29.8).
+
 **For the write-up.** Not a modelling choice so much as a correctness
 requirement — worth one sentence noting the distinction, since a reset
 specification is a natural misreading of "jump".
@@ -2856,9 +2866,18 @@ formula value (1.386 vs 1.260 for z₂ in v3, §8c).
   and matching a level only 4% lower needs a larger ergodic variance and a
   slower drift (β₂ −11%).
 - So v3 does not soften the v2 conclusion. Poland's long-run dispersion is
-  higher in v3. On the additive formula it is 1.26 vs KMV's 0.91 (sd 1.12 vs
-  0.95). On KMV's own reset specification KMV's value is 0.655 (sd 0.81, §29.5).
-  The gap to KMV is not like-for-like in either case (§29.5).
+  higher in v3: var₂ 1.26, and the exported chain has ergodic var(log e) 1.51
+  (persistent component 1.39).
+- **KMV reference (changed 2026-11-09, §29.9).** The reference is the
+  ergodic distribution of the **published KMV chain**
+  (`annual-review/inputs/kmv_process`, the chain inside their model and our
+  S1 HANK baseline): var(log e) **0.846** (sd 0.92), persistent component
+  **0.647**.
+  - Earlier text used 0.91, our additive formula applied to KMV's parameters,
+    and 0.655, the reset formula at the rounded Table 3 parameters. Both are
+    superseded.
+  - Against the chain, Poland v3 is 1.51 vs 0.85 in total and 1.39 vs 0.65 for
+    the persistent component.
 
 ### 26.6 Bootstrap of Poland v3 (B.4)
 
@@ -2945,8 +2964,13 @@ ones in brackets):
     upper bound. Both are reported.
 - **The two designs agree on the transitory component** (SEs of 0.4–2.4%).
   They differ only in how they weigh the persistent one.
-- **Both intervals exclude the additive KMV anchor (var₂ 0.91)** by a wide
-  margin. The lower ends are 1.06 and 1.17, and v2's CI was [1.00, 1.28].
+- **Both intervals lie far above KMV's persistent component** (0.65 in the
+  published KMV chain, §29.9). The lower ends are 1.06 and 1.17, and v2's CI
+  was [1.00, 1.28]. They also exclude the superseded anchor 0.91.
+  - Caveat: Poland's var₂ is a formula value and KMV's 0.65 a chain value.
+  - The chain sits about 10% above the formula for Poland (1.39 vs 1.26) and
+    7% above for KMV (0.647 vs the exact reset formula 0.603), so the
+    comparison is roughly like-for-like in scale.
 - Caveats, as in §19 and §24.11:
   - this is year-to-year variability of the GRID statistics, not microdata
     sampling error;
@@ -2988,10 +3012,12 @@ step 2.
 - **It is asymmetric.** It rises steeply toward low var₂: at 0.8× f is +19%,
   at 0.6× ×2.9, with the level 11% too low. Toward high var₂ it is flatter:
   +9% at 1.25×, +21% at 1.5×.
-- **KMV's additive anchor 0.91 (≈ 0.72×) lies on the steep side.**
-  Interpolating between 0.6× and 0.8×, f there is
-  about ×1.5–1.8 the minimum (the profile is convex, so linear interpolation
-  gives the upper end).
+- **The KMV reference lies outside the profiled range.** The persistent
+  component of the published KMV chain (0.65, §29.9) is ≈ 0.51× Poland's
+  var₂. That is below the lowest profile point (0.6×, already f ×2.9, level
+  −11%).
+  - The superseded anchor 0.91 (≈ 0.72×) would sit on the steep side at
+    ×1.5–1.8 the minimum.
 - Compared with v2 (§24.5), the shape is the same, shifted up by roughly the
   11% change in the point estimate.
 
@@ -3172,7 +3198,9 @@ Derived quantities use the delta method with numerical gradients.
     plausible for a nonlinear map evaluated at T = 16–21.
   - With Ω_sim added (an honest total), var₂ = 1.26 ± 0.06 (detrended) or
     ± 0.13 (raw). That gives 95% intervals of about [1.14, 1.38] and
-    [1.01, 1.51]. Both exclude 0.91.
+    [1.01, 1.51]. Both exclude the KMV reference (0.65, persistent
+    component of the published chain, §29.9) by a wide margin. They also
+    exclude the superseded 0.91.
 - **The transitory component does not agree.** λ₁ and β₁ have asymptotic SEs
   of 5–6%, against 1.6–2.4% from the bootstrap. Two candidate reasons; the
   data here cannot separate them:
@@ -3301,10 +3329,18 @@ Script `scripts/pol_v3_vs_kmv.py table`. Output in
 The reset-formula row applies KMV's specification to *both* parameter sets.
 Poland's parameters were estimated under additive jumps, so "Poland, reset
 formula" is **not** a valid Poland number. It only shows that the gap between
-the two rows comes almost entirely from the formula. The like-for-like
-comparison is additive vs additive (1.12 vs 0.95). The
-specification-consistent one needs a Poland re-estimate under resets (§29.5,
-not run).
+the two rows comes almost entirely from the formula.
+
+**KMV reference (§29.9): the published chain** (3 × 11, bit-identical to the
+replication package's discretization output):
+
+| | var(log e) total | z₁ | z₂ |
+|---|---|---|---|
+| ergodic | **0.846** | 0.199 | **0.647** |
+
+Against that, the Poland v3 chain (additive, 5 × 15) is 1.51 / 0.13 / 1.39.
+The specification-consistent Poland number, re-estimated under resets, is in
+§29.8.
 
 **Continuous-process moments** (simulated, 100k workers, ages 25–55; in brackets
 25–60)
@@ -3594,6 +3630,215 @@ Fortran matches the port.
 | data aggregation | one year (1995), pooled over ages | mean of annual statistics, 2000–2020 | no (pooling vs averaging is ≈ 0 for PL kurtosis, 29.4) |
 | level target | 0.70, definition unknown | `std_resid²`, men 25–55 (v3) | no (KMV's is undocumented) |
 
+### 29.7 The KMV replication package: what the original code does (2026-11-09)
+
+**Source.** openICPSR 231376, unpacked locally at `data/KMV_replication/`
+and not in git (`.gitignore`, commit 2666def). Below, `R/` means
+`data/KMV_replication/231376-V1 (2)/20160042_data/Replication/`. File and line
+numbers refer to that tree. No code from it is copied into this repository.
+The two parts used are:
+- `R/EarningsProcess/EarningsEstimation/` (SMM estimation, Fortran);
+- `R/EarningsProcess/EarningsDiscretization/` (the 3 × 11 chain).
+
+**The process in the code is a reset with a general ρ, and ρ is set to 0.**
+- **On a jump** (`EarningsEstimation/Simulate.f90`, l. 43–47 and 55–59) the
+  new value of the component is ρ · (old value) + σ · ε.
+- **Between jumps** (l. 49 and 61, `AdditiveDrift = 0`) the value is
+  multiplied by (1 − dt · β), i.e. Euler decay.
+- **ρ is never estimated.** `SetParameters.f90` l. 30–31 set `EstimateRho1 =
+  EstimateRho2 = 0`, and `MakeGuess.f90` l. 10 and 17 fix both ρ guesses at
+  0.0. The paper's output `earnings_estimation_paper/parameters.txt` reports
+  `rho1 = rho2 = 0`.
+- So the estimated process is **z → ε on arrival: a reset**. An additive
+  process would be ρ = 1.
+- The stationary variance used for the starting draw (`Simulate.f90`
+  l. 14/21) is λσ² / (2β + λ(1 − ρ²)). This is the reset formula at ρ = 0 and
+  the additive one at ρ = 1.
+- **The chain is built the same way.**
+  - `EarningsDiscretization/TransitionMatrix.f90` l. 79–83 and 104–108: the
+    landing probabilities are normal CDF differences centred at ρ ·
+    (origin), with `rho1 = rho2 = 0.0` set in
+    `EarningsDiscretization/SetParameters.f90` l. 26 and 31. So the jumps
+    land on N(0, σ²) from every origin.
+  - The drift is a 2-point linear-interpolation scheme
+    (`DriftPointsVersion = 2`, `EarningsDiscretization/SetParameters.f90`
+    l. 13).
+  - The grid width and power spacing of each component are chosen by the
+    same derivative-free least-squares routine (DFLS/NEWUOA) to match the
+    same 8 moments, simulated on the chain.
+  - `earnings_discretization_paper/ygrid_combined.txt` and
+    `ymarkov_combined.txt` are **bit-identical** to
+    `annual-review/inputs/kmv_process/` (checked: max abs. difference 0).
+    That is the chain inside KMV's model and inside our S1 baseline.
+
+**Estimation details** (what §29.1–29.4 inferred from the CUDA port, now
+confirmed against the original):
+
+| item | original code | where |
+|---|---|---|
+| objective | DFLS on residuals √w_m · (model/target − 1); w = 0.5 for kurt Δ1 and kurt Δ5, 1 otherwise | `EarningsEstimation/dfovec.f90` l. 126–185 (weights set at l. 145, 162) |
+| optimizer | NEWUOA-based DFLS, 3 restarts (`ndfls = 3`), rhobeg 5, rhoend 1e-4 | `SetParameters.f90` l. 61–63; `Estimation.f90` l. 107–110 |
+| parameter bounds | logistic transforms: λ ≤ 2, σ ≤ 2, β ≤ 1 (quarterly) | `SetParameters.f90` l. 65–69; `dfovec.f90` l. 25, 46, 82, 89, 96, 103 |
+| simulation | dt = 0.25 quarter (16 steps/yr); start from the stationary normal; 100-quarter burn-in; 20 quarters kept = 5 annual observations; **one cross-section** | `Parameters.f90` l. 5–8; `Simulate.f90` l. 31–34, 73–78 |
+| simulated workers | `nsim = 5000` as shipped (a comment says 50000; the discretization uses 50000) | `EarningsEstimation/Parameters.f90` l. 5; `EarningsDiscretization/Parameters.f90` l. 7 |
+| "5-year" change | year 5 − year 1 = **a 4-year gap** (the bug suspected in the port is in the original) | `ComputeMoments.f90` l. 55–58 |
+| targets | hard-coded: 0.7, 0.23, 17.8, 0.46, 11.55, 0.54, 0.71, 0.86; no data code in the package | `SetParameters.f90` l. 49–59 |
+| standard errors | **none**: no Jacobian, Hessian or covariance anywhere in the estimation code | whole `EarningsEstimation/` |
+| unrounded estimates | λ₁ 0.07987, β₁ 0.7616, σ₁ 1.7352, λ₂ 0.006561, β₂ 0.009392, σ₂ 1.5259 | `earnings_estimation_paper/parameters.txt` |
+
+For §29.3: the package does not define the 0.70 either. It is a hard-coded
+number with no data code behind it. That conclusion stands.
+
+**How the paper describes the process.**
+- The NBER working paper **w21897, section 4.3** (as noted by the user; the
+  2016 CEP version we have, eq. 31, has the same form) writes the process as
+  **dz = −βz dt + ε dN, i.e. additively**.
+- The AER text (eq. 33–34, "a new log-earnings state is drawn") and the code
+  are **reset**.
+- So **in KMV the working paper's equation and the implementation differ.**
+  The published paper and the code agree with each other.
+- **Our baseline stays with the specification written in the working paper
+  (additive).** The reset version is a robustness check (§29.8), not a new
+  baseline.
+
+**The contradiction with §1, resolved.** §1 (project start) found that
+"reset at Table 3 parameters gives var Δ1 ≈ 0.40 against 0.23" and chose
+additive jumps on that basis. The §1 test is not in the repository.
+
+All designs were re-run at Table 3 parameters (`scripts/reset_vs_sec1.py`,
+200k workers, `output/pol_v3/kmv_method/reset_vs_sec1.json`):
+
+| design | var log | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | <10% | <20% | <50% |
+|---|---|---|---|---|---|---|---|---|
+| **KMV Table 2, model** | 0.70 | 0.23 | 0.46 | 16.5 | 12.1 | 0.56 | 0.67 | 0.85 |
+| KMV code output (`moments.txt`, nsim 5000) | 0.696 | 0.229 | 0.464 | 16.53 | 12.06 | 0.557 | 0.673 | 0.851 |
+| **D: replica of KMV's code**, unrounded params | **0.702** | **0.227** | **0.463** | 15.67 | 13.02 | 0.556 | 0.666 | 0.847 |
+| E: replica, Table 3 rounded params | 0.754 | 0.233 | 0.486 | 15.72 | 12.90 | 0.554 | 0.663 | 0.844 |
+| **A: ours** (additive, lifecycle 36 yrs from 0, true Δ5) | 0.691 | 0.228 | 0.504 | 14.53 | 10.79 | 0.547 | 0.659 | 0.840 |
+| B: reset in our design (lifecycle from 0) | 0.573 | 0.227 | 0.520 | 15.70 | 11.75 | 0.551 | 0.661 | 0.842 |
+| C: reset, ergodic, true 5-yr Δ5 | 0.751 | 0.232 | 0.555 | 16.01 | 11.87 | 0.545 | 0.657 | 0.841 |
+| F: additive, ergodic, true 5-yr Δ5 | 1.017 | 0.230 | 0.520 | 14.47 | 10.55 | 0.540 | 0.655 | 0.838 |
+| reset with all rates ×4 (units slip) | 0.684 | **0.421** | 1.061 | 10.45 | 5.72 | 0.276 | – | – |
+
+The replica (D) follows the description above: reset, Euler decay, 16 steps
+per year, stationary start, 25-yr burn-in, 4-yr gap, one cross-section. It
+was written independently from the description, not copied. Last row: 60k
+workers, run separately; < 20% and < 50% were not recorded.
+
+**Comparing the two implementations of the reset.**
+- **What is drawn.**
+  - KMV: per step, a Bernoulli jump indicator with probability dt · λ, and on
+    a jump a new value σ · ε (ρ = 0); the old value is discarded.
+  - Our `reset_jumps=True`: the same, with probability 1 − e^{−λ dt}.
+- **Decay in the same step.**
+  - KMV: decay and jump are exclusive. A jumping step sets z = σε, a
+    non-jumping step decays.
+  - Ours: the same, because the decayed value is computed but unused on a
+    jump. With additive jumps ours decays *and* adds in the jumping step.
+- **Time step.** KMV uses 16 steps per year with Euler (1 − dt β). We use 24
+  per year with exact e^{−β dt}. For β₁ = 0.76 per quarter the Euler step
+  decays 19% per step against 17% exactly. This is a small effect on
+  transitory persistence.
+- **Sample.**
+  - KMV: one ergodic cross-section, 5 annual observations, Δ5 over a 4-year
+    gap.
+  - Ours: a lifecycle panel from z = 0, 36 (v3: 31) years, a true 5-year gap.
+- **Objective.**
+  - KMV: kurtosis weight 0.5, DFLS with 3 restarts, 5000 simulated workers
+    and one seed.
+  - Ours: weight 1 for every moment, DE/TikTak, 50k workers, CRN.
+
+**What explains §1's 0.40.**
+1. **No correct reset implementation gives 0.40.** At Table 3 parameters
+   every reset variant gives var Δ1 = 0.227–0.233 (B, C, D, E), exactly like
+   the additive one. var Δ1 is driven by the transitory component, whose
+   one-year change is nearly the same under reset and additive jumps (it
+   decays within a quarter either way).
+2. §1's number **is** reproduced by a reset with **all rates four times too
+   fast** (var Δ1 0.42). That is quarterly rates applied per quarter-step when
+   the step was meant to be a year or a sub-step. It is the most likely
+   explanation: a units slip in the original check. It cannot be confirmed
+   because the §1 script was not kept.
+3. **What really separates the specifications is the level and Δ5, through
+   the sampling design, not the jump type.**
+   - In our lifecycle-from-0 design a reset gives a level of 0.57, too low.
+     Persistent jumps cannot accumulate because each new one replaces the
+     last.
+   - In KMV's ergodic design a reset gives 0.70, as it should, while the
+     additive process gives 1.02, too high.
+   - Each specification reproduces Table 2 only in its own design: additive +
+     lifecycle (A), or reset + ergodic + 4-yr gap (D).
+   - §1 and §2 were decided one after the other, and their combination (A)
+     reproduces Table 2. But the reason §1 gave ("reset misses var Δ1") is
+     wrong.
+4. **The replica reproduces KMV's own output at the unrounded parameters.**
+   - The level and variances match to 0.001–0.006.
+   - Kurtoses are 15.7 vs 16.5 and 13.0 vs 12.1. With nsim = 5000 the SD of
+     the sample kurtosis is large: over 40 replica seeds at nsim = 5000 the SD
+     is 3.0 for kurt Δ1 and 0.96 for kurt Δ5, mean 16.5 and 13.0. KMV's
+     reported kurtoses are therefore single noisy draws, and the weight 0.5
+     partly offsets that noise.
+   - Rounding to Table 3 (λ₂ 0.00656 → 0.007, β₂ 0.00939 → 0.009) raises the
+     level from 0.70 to 0.75 (E vs D). Table 3's rounded numbers do not quite
+     reproduce Table 2 under KMV's own design. This also explains the 0.750 in
+     §29.5's table, which used the rounded parameters.
+
+**Corrections to §29.1–29.6 and §1.**
+- **§29.5.** "the published process uses resets" is now confirmed in the
+  original code, not just the port. The KMV reset variance is **0.603**
+  (unrounded parameters) instead of 0.655 (rounded). §29.9 replaces both with
+  the published chain.
+- **§29.6.** The "4-year gap (likely a bug)" is in the original.
+- **§1.** Its verification sentence is wrong, as shown above. The choice of
+  additive jumps stands, on the ground of the working-paper specification
+  (decision above), not on that test.
+
+### 29.8 Poland v3 re-estimated with reset jumps (robustness)
+
+_Running (3 DE seeds + TikTak); results to follow._
+
+### 29.9 The KMV reference point: the published chain, not a formula (2026-11-09)
+
+**Decision.**
+- Every "vs KMV" comparison of long-run dispersion now uses the **ergodic
+  distribution of the published KMV chain**, `annual-review/inputs/kmv_process`.
+  It is bit-identical to `R/EarningsProcess/EarningsDiscretization/
+  earnings_discretization_paper/` (§29.7).
+- This is the chain that sits inside KMV's model and inside our S1 HANK
+  baseline. It is therefore what "KMV's earnings risk" means for the step-2
+  comparison, whatever formula one would apply to their parameters.
+
+| object | value | status |
+|---|---|---|
+| **published chain, ergodic var(log e)** | **0.846** (sd 0.920) | **reference** |
+| published chain, persistent component z₂ (11 states) | **0.647** | reference for var₂ comparisons |
+| published chain, transitory component z₁ (3 states) | 0.199 | |
+| reset formula λσ²/(λ+2β), unrounded parameters: z₂ / z₁ | 0.603 / 0.150 | the continuous process behind the chain; the chain is +7% / +33% |
+| reset formula at rounded Table 3 parameters (z₂) | 0.655 | superseded (§29.5) |
+| additive formula at Table 3 parameters (z₂), `KMV_ERGODIC_VAR2` | 0.910 | superseded: our formula on their parameters, never in their model |
+| additive formula, total | 1.07 | superseded (STEP2_LOG, §25, the GER/USA pin) |
+
+**Places changed in this stage:** §26.5, §26.6, §26.7, §27, §28.2 and §30.
+Each now quotes 0.85 (total) or 0.65 (persistent) and calls 0.91 "superseded".
+
+**Places not changed:** §8b, §12, §23 and §24. They are earlier stages and
+are kept as written, with this section as the erratum. The GER and USA
+`β₂` pins (`ErgodicVarConstraint`, var₂ = 0.9103) were calibrated to the
+superseded additive anchor.
+- The brief says not to recompute FRA/GER/USA, so the pins stay.
+- **This is now an open item**: they were pinned to a number KMV's model
+  never contained. Re-pinned to the chain's 0.647 they would be more
+  mean-reverting.
+
+**Comparing like with like.**
+- Chain vs chain, total var(log e):
+  - Poland v3 additive (5×15): 1.51;
+  - Poland v3 reset (§29.8): the value is given there;
+  - KMV published (3×11): 0.85.
+- Persistent component, chain vs chain: Poland v3 1.39 vs KMV 0.65.
+- The chain/formula ratio is similar for both (Poland +10%, KMV +7% on z₂).
+  So formula-based Poland intervals (§26.6, §27) can be read against 0.65.
+
 ---
 
 ## 30. Summary of the v3 stage (2026-11-09)
@@ -3730,6 +3975,11 @@ above KMV)? No. It strengthens it, with one important qualification.**
   code port) — NEW 2026-11-08, §29.5.** Affects every "vs KMV" comparison of
   var₂. Needs the openICPSR package, a reset re-estimation of Poland, and a
   supervisor decision on the baseline.
+- **GER/USA `β₂` pins use the superseded KMV anchor (§29.9).** They were
+  pinned to var₂ = 0.9103, our additive formula on KMV's parameters. KMV's
+  published chain has 0.647 for the persistent component. FRA/GER/USA are
+  not to be recomputed (brief, 2026-11-08), so this is for the supervisor:
+  re-pin to 0.647, or keep and state the convention.
 - **v3_end puts β₂ at its lower bound (§26.8).** Robustness only, no chain.
   Report as "the end-of-window data favour even more persistence"; no action
   unless the supervisor wants v3_end as a HANK input.
