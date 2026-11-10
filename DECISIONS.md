@@ -4002,6 +4002,111 @@ above KMV)? No. It strengthens it, with one important qualification.**
 
 ---
 
+## 31. Poland estimated with "the KMV method" (2026-11-10)
+
+**Goal.** An estimation variant that is fully comparable with KMV's own
+procedure, next to the v3 baseline (§26.5), which is not changed. Everything
+below is derived from the replication package (openICPSR 231376, local only,
+never committed). Only Poland is computed. Wherever the model has ages, they
+match the data (Poland: 25–55). New outputs go to `output/pol_v3_kmvmethod/`.
+
+**Path conventions.** `R/` = `data/kmv_replication/231376-V1 (2)/20160042_data/Replication/`,
+`E/` = `R/EarningsProcess/EarningsEstimation/`, `D/` = `R/EarningsProcess/EarningsDiscretization/`.
+"l." = line numbers in those files. Our code is cited as `kmv_earnings/…` and
+`scripts/pol_v3_estimate.py` at commit 713f29f.
+
+### 31.1 Inventory of differences: KMV's code vs our v3
+
+**A. Process**
+
+| # | element | KMV (file:line) | our v3 | differs? |
+|---|---|---|---|---|
+| A1 | jump type | on a jump `y ← ρ·y + σ·ε` (`E/Simulate.f90` l. 45–47, 57–59); ρ not estimated (`E/SetParameters.f90` l. 30–31), fixed at 0 (`E/MakeGuess.f90` l. 10, 17); reported ρ₁ = ρ₂ = 0 (`E/earnings_estimation_paper/parameters.txt` l. 7–8). So **reset**, z → ε | **additive**, z → z·e^{−βdt} + ε (`kmv_earnings/simulate.py` l. 128) | **yes** |
+| A2 | decay between jumps | Euler, `y ← (1 − dt·β)·y` (`E/Simulate.f90` l. 49, 61; `AdditiveDrift = 0`, `E/SetParameters.f90` l. 21) | exact, `e^{−β dt}` (`simulate.py` l. 101) | yes (small) |
+| A3 | jump arrival per step | Bernoulli with probability dt·λ (`E/Simulate.f90` l. 43, 55; `DiscreteDist1`, `E/Procedures.f90` l. 728–752) | probability 1 − e^{−λ dt} (`simulate.py` l. 102) | yes (small) |
+| A4 | step length | dt = 0.25 quarter = **16 steps per year** (`E/Parameters.f90` l. 6) | 6 per quarter = **24 per year** (`simulate.py` l. 68) | yes |
+| A5 | shock distribution | normal (`UseNormalDist = 1`, `E/SetParameters.f90` l. 18) | normal | no |
+
+**B. Simulation design**
+
+| # | element | KMV (file:line) | our v3 | differs? |
+|---|---|---|---|---|
+| B1 | initial condition | stationary normal, variance λσ²/(2β + λ(1 − ρ²)) (`E/Simulate.f90` l. 12–24, 31–34); at ρ = 0 the reset formula | **lifecycle**: everyone starts at z = 0 (`simulate.py` l. 104–105, `lifecycle=True`) | **yes** |
+| B2 | burn-in | `Tburn = FLOOR(100/dt) + 1` = 401 steps = 100 quarters = **25 years** (`E/Parameters.f90` l. 7) | none | **yes** |
+| B3 | panel kept | 20 quarters after the burn-in, `Tann = 5` annual observations (`E/Parameters.f90` l. 8–9; years built at `E/Simulate.f90` l. 74–78) | 36 years simulated, **31 used** (ages 25–55: `N_AGE_COLS = 31`, `scripts/pol_v3_estimate.py` l. 49–50) | **yes** |
+| B4 | simulated workers | `nsim = 5000` (the comment says 50000) (`E/Parameters.f90` l. 5) | 50 000 in estimation, 100 000 out of sample (`pol_v3_estimate.py` l. 50–51) | yes |
+| B5 | annual aggregation | sum of exp(z) over the 16 steps of a year, then log (`E/Simulate.f90` l. 71–79) | sum of exp(z) over the 24 steps, then log (`simulate.py` l. 119–128) | no (same principle) |
+| B6 | random numbers | all drawn once before estimation (common random numbers), seed (7755, 7744), Intel Fortran `RANDOM_NUMBER` (`E/SetParameters.f90` l. 74–92) | common random numbers through a fixed numpy seed (1234) | no in principle; the streams cannot be reproduced |
+
+**C. The eight moments**
+
+| # | element | KMV (file:line) | our v3 | differs? |
+|---|---|---|---|---|
+| C1 | variance of log earnings | **one cross-section**: year 1 only, 1/n (`E/ComputeMoments.f90` l. 10–11) | mean over the 31 age columns of the cross-sectional variance (`simulate.py` l. 148) | **yes** |
+| C2 | 1-year change | **only** year 2 − year 1, one change per worker (`E/ComputeMoments.f90` l. 40–43) | all consecutive pairs at ages 25–55, pooled (`simulate.py` l. 149) | **yes** |
+| C3 | "5-year" change | year 5 − year 1 = **a 4-year gap** (`E/ComputeMoments.f90` l. 55–58) | a true 5-year gap, all pairs at ages 25–55, pooled (`simulate.py` l. 150) | **yes** |
+| C4 | kurtosis | standardized 4th central moment with 1/n, μ₄/μ₂² (`E/ComputeMoments.f90` l. 41–48, 56–63) | the same (`simulate.py` l. 152–154) | no |
+| C5 | fractions of small changes | share of \|Δ1\| strictly below 0.1 / 0.2 / 0.5, on the single year-1→2 change (`E/ComputeMoments.f90` l. 70–73) | the same thresholds and strict `<`, on all pooled Δ1 (`simulate.py` l. 162–164) | definition no; sample yes (C2) |
+| C6 | targets | hard-coded US numbers 0.7, 0.23, 17.8, 0.46, **11.55**, 0.54, 0.71, 0.86 (`E/SetParameters.f90` l. 49–59; Table 2 prints 11.6) | `targets/pol_grid_v3.json` | n/a |
+
+**D. Objective**
+
+| # | element | KMV (file:line) | our v3 | differs? |
+|---|---|---|---|---|
+| D1 | residuals | relative, model/target − 1 (`E/dfovec.f90` l. 130, 135, 146, 151, 163, 173, 178, 183) | relative, (m − t)/t (`kmv_earnings/estimate.py` l. 101) | no |
+| D2 | weights | **0.5 for kurt Δ1 and kurt Δ5**, 1 otherwise, applied as √w inside the residual (`E/dfovec.f90` l. 126, 145, 162) | 1 for all 8 (`estimate.py` l. 93–94, `weights=None`) | **yes** |
+| D3 | norm | sum of squares F = Σ fᵢ² of the weighted residuals (`E/newuob-h.f` l. 344–349 and `f_value`, l. 622–629). The `objective fun` printed in `iterations.txt` is √(weighted mean of squares) (`E/dfovec.f90` l. 187–190), only printed, not minimized | Σ wₘ·relₘ² (`estimate.py` l. 102) | no (squares in both) |
+
+**E. Optimizer**
+
+| # | element | KMV (file:line) | our v3 | differs? |
+|---|---|---|---|---|
+| E1 | algorithm | DFLS: NEWUOA-H, a derivative-free trust-region least-squares method (Zhang, Conn & Scheinberg) (`E/newuoa-h.f` l. 1–14; called at `E/Estimation.f90` l. 110) | differential evolution + bounded Nelder-Mead polish (`estimate.py` l. 158, 167), and TikTak (`kmv_earnings/tiktak.py`) | **yes** |
+| E2 | starting point | one start, `MakeGuess`: λ₁ 0.08, β₁ 0.7, σ₁ 1.6, λ₂ 0.007, β₂ 0.01, σ₂ 1.6 (`E/MakeGuess.f90` l. 9–19) | 5 DE seeds with KMV Table 3 injected into the population, + TikTak with 4096 Sobol points and the same warm start (`pol_v3_estimate.py` l. 63–64, 100, 106) | yes |
+| E3 | restarts / convergence | `ndfls = 3` sequential restarts, each from the previous solution; `rhobeg = 5` and `rhoend = 1e-4` in the transformed space; `maxfun = 500·(n + 1)` = 3500 per restart (`E/SetParameters.f90` l. 61–63; `E/Estimation.f90` l. 101–112). The paper run used 441 evaluations in total (`E/earnings_estimation_paper/iterations.txt`) | DE `tol 1e-6`, `maxiter 200`, `popsize 15`; NM `xatol 1e-4`, `fatol 1e-8`, 800 iterations | yes |
+| E4 | parameter space | logistic transforms: λ = 2·logistic(x), σ = 2·logistic(x), β = 1·logistic(x), i.e. **λ ∈ (0, 2), σ ∈ (0, 2), β ∈ (0, 1)** per quarter, for both components (`E/SetParameters.f90` l. 65–69; `E/dfovec.f90` l. 25, 46, 82, 89, 96, 103) | log box (`estimate.py` l. 33–39): λ₁ [0.01, 0.6], **β₁ [0.05, 8]**, σ [0.2, 3.5], λ₂ [0.001, 0.1], β₂ [1e-4, 0.2] | **yes**: β₁ ≤ 1 and σ ≤ 2 bind for Poland if v3's β₁ = 2.8 and σ₁ = 2.0 survive the other changes |
+| E5 | choice of the estimate | the end point of the single run | the lowest out-of-sample f across starts (100k workers, another seed) | yes |
+| E6 | standard errors | none (§29.2, §29.7) | bootstrap + asymptotic | yes (irrelevant here) |
+
+**F. The Markov chain**
+
+| # | element | KMV (file:line) | our v3 | differs? |
+|---|---|---|---|---|
+| F1 | size | **3 × 11** = 33 (`D/Parameters.f90` l. 5–6) | 5 × 15 = 75 (`kmv_earnings/discretize.py` l. 151) | yes |
+| F2 | grid points | symmetric, end points ±width/2, power-spaced on each half with x^{1/k}, k = `gridpar` (`D/TransitionMatrix.f90` l. 36–53; `PowerSpacedGrid`, `D/Procedures.f90` l. 448–483) | bin edges power-spaced on ±3.5σ, points = conditional means of N(0, σ²) within each bin (`discretize.py` l. 78–91) | yes |
+| F3 | how the grid is chosen | width and `gridpar` of each component (4 numbers) are **fitted by DFLS** (4 restarts, `rhobeg 5`) to the 8 moments of the simulated chain, against **the data targets** (`D/SetParameters.f90` l. 47–62; bounds and guesses `D/MakeGuess.f90` l. 8–20: width ∈ [σ, 10σ], start 2σ; `gridpar` ∈ [0.3, 1], start 0.7; `D/dfovec.f90` l. 59–126, same 0.5 kurtosis weights at l. 82, 99). Appendix D.1 says the grid matches "the combined continuous-state process"; the code matches the data targets | a fixed rule; no fitting | **yes** |
+| F4 | jump landings | normal CDF over mid-point bins, centred at ρ·(origin) = 0, rows renormalized (`D/TransitionMatrix.f90` l. 75–123; ρ₁ = ρ₂ = 0 at `D/SetParameters.f90` l. 26, 31) | CDF over our bin edges, centred at the origin (additive) (`discretize.py` l. 112) | **yes** (reset vs additive) |
+| F5 | drift | 2-point linear interpolation toward (1 − β)·y (`DriftPointsVersion = 2`, `D/SetParameters.f90` l. 13; `D/TransitionMatrix.f90` l. 125–173). The rate to the inner neighbour is β·y / (y − y_inner): **the same upwind scheme** as ours | upwind (`discretize.py` l. 104) | no |
+| F6 | variance correction | none; the fitted width plays that role through the moments | analytic rescale to λσ²/2β per component (`discretize.py` l. 217), then `match_var_log` (l. 220–232) | yes |
+| F7 | how the chain is simulated for the fit | Euler step `I + dt·Q`, dt = 0.25 (`D/Simulate.f90` l. 21–22); start from the chain's ergodic distribution (l. 56–57); 20 quarters = 5 years (`D/Parameters.f90` l. 9; `D/Simulate.f90` l. 68–71); nsim 50 000 (`D/Parameters.f90` l. 7); uniform CRN, seed (7755, 7744) (`D/Estimation.f90` l. 12–19); the same moments as C1–C5 (`D/ComputeMoments.f90`) | `expm(Q)` quarterly, lifecycle from the grid point nearest 0 | yes |
+| F8 | exported object | the generator `ymarkov_combined` = Kronecker sum (`D/CombinedProcess.f90` l. 28–32), states sorted ascending (l. 39–55); also `ytrans_qu` = (I + dt·Q)⁴ (`D/Simulate.f90` l. 37–43) | `Q` (Kronecker sum) and `P = expm(Q)` | no for Q |
+| F9 | parameters used | rounded to 4–5 digits (`D/SetParameters.f90` l. 23–31: 0.07987, 0.7616, 1.7352, 0.00656, 0.00939, 1.5259) | the estimate itself | minor |
+
+**Things noticed in passing** (no effect on the results):
+- `D/CombinedProcess.f90` l. 40 calls `MINLOC(ygrid_combined)` (the
+  not-yet-filled global) instead of `lygrid_combined`. It returns index 1,
+  which is the minimum anyway, so the sort is right.
+- `D/TransitionMatrix.f90` l. 79–116 read the global `y1grid` / `y2grid`
+  instead of the arguments `ly1grid` / `ly2grid`. They are the same arrays
+  at the only call site (`D/dfovec.f90` l. 59).
+- Appendix Table D.1 prints the discretized kurt Δ5 as 13.2;
+  `D/earnings_discretization_paper/moments.txt` has 12.23. The other
+  discretized entries agree with the file.
+- The package ships two estimation runs. `E/earnings_estimation_paper/` is
+  the paper (441 evaluations). `E/earnings_estimation_output/` is a later
+  re-run (309 evaluations): λ₁ 0.07989, β₁ 0.7544, σ₁ 1.7341, λ₂ 0.006528,
+  β₂ 0.009206, σ₂ 1.5273. The ReadMe (`R/ReadMe.txt`, "EARNINGS PROCESS
+  ESTIMATION", step 1) attributes the gap to simulation error. It is KMV's
+  own measure of run-to-run noise: β₁ −0.9%, β₂ −2.0%, λ₂ −0.5%.
+
+**Summary.** The method differs in six substantive places: A1 (reset), B1–B3
+(ergodic cross-section, 25-year burn-in, 5 years), C1–C3 (one cross-section,
+4-year "Δ5"), D2 (kurtosis weight 0.5), E1–E4 (DFLS from one guess, β ≤ 1,
+σ ≤ 2) and F1–F7 (a 3 × 11 grid fitted to the moments). Steps A2–A4 and B4 are
+numerical details. Point 4 (§31.4) measures each one separately.
+
+---
+
 ## Open decisions (not yet settled)
 
 - **One-asset vs two-asset for Poland — REOPENED 2026-10-20 (§24.6).** On the
