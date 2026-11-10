@@ -71,9 +71,17 @@ def simulate_log_annual_earnings(
     seed: int = 1234,
     deterministic_arrival: bool = False,
     reset_jumps: bool = False,
+    kmv_euler: bool = False,
 ) -> np.ndarray:
     """
     Return log annual earnings, shape (n_workers, n_years_keep).
+
+    `kmv_euler`: the per-step rules of KMV's EarningsEstimation/Simulate.f90
+    (l. 43, 49, 55, 61): a jump arrives with probability lambda*dt (not
+    1 - exp(-lambda*dt)) and between jumps z decays by the Euler factor
+    (1 - beta*dt) (not exp(-beta*dt)), dt = 1/steps_per_quarter quarters. With
+    steps_per_quarter=4 this is KMV's 16 steps per year (DECISIONS Sec 31).
+    Default False: unchanged, bit for bit (tests/test_kmv_method.py).
 
     Fixed seed + fixed RNG-call structure => common random numbers across
     parameter values (the SMM objective is smooth-ish and deterministic).
@@ -100,6 +108,9 @@ def simulate_log_annual_earnings(
     rng = np.random.default_rng(seed)
     decay = np.exp(-beta)
     p_jump = np.ones(2) if deterministic_arrival else 1.0 - np.exp(-lam)
+    if kmv_euler:
+        decay = 1.0 - beta
+        p_jump = np.ones(2) if deterministic_arrival else lam
 
     z = np.zeros((n_workers, 2))
     if not lifecycle:
@@ -135,19 +146,34 @@ def simulate_log_annual_earnings(
     return logy
 
 
-def moments_from_panel(logy: np.ndarray, n_age_cols: int | None = None) -> dict:
+def moments_from_panel(logy: np.ndarray, n_age_cols: int | None = None,
+                       d5_gap: int = 5, cross_section: bool = False) -> dict:
     """8 target moments from a (workers x years-of-age) panel.
 
     `n_age_cols`: if set, use only the first `n_age_cols` columns (ages), e.g.
     31 = ages 25-55 of the 36-year (25-60) panel, matching GRID's age window
     (DECISIONS Sec 26). 1y/5y changes are then taken within that window only.
     None (default) uses every column, exactly as before.
+
+    `d5_gap`: the gap, in years, of the "5-year" change (default 5). KMV's
+    code uses year 5 - year 1, i.e. 4 (EarningsEstimation/ComputeMoments.f90
+    l. 55-58; DECISIONS Sec 31).
+    `cross_section`: KMV's moments from ONE cross-section (ComputeMoments.f90
+    l. 10-11, 40-43, 55-58, 70-73): the variance of column 0 only, one 1-year
+    change (col 1 - col 0) and one "5-year" change (col d5_gap - col 0) per
+    worker. Default False: pooled over all columns, unchanged.
     """
     if n_age_cols is not None:
         logy = logy[:, :n_age_cols]
-    var_log = float(np.mean(np.var(logy, axis=0)))
-    d1 = (logy[:, 1:] - logy[:, :-1]).ravel()
-    d5 = (logy[:, 5:] - logy[:, :-5]).ravel()
+    g = int(d5_gap)
+    if cross_section:
+        var_log = float(np.var(logy[:, 0]))
+        d1 = logy[:, 1] - logy[:, 0]
+        d5 = logy[:, g] - logy[:, 0]
+    else:
+        var_log = float(np.mean(np.var(logy, axis=0)))
+        d1 = (logy[:, 1:] - logy[:, :-1]).ravel()
+        d5 = (logy[:, g:] - logy[:, :-g]).ravel()
 
     def kurt(x):
         x = x - x.mean()
@@ -165,13 +191,16 @@ def moments_from_panel(logy: np.ndarray, n_age_cols: int | None = None) -> dict:
     }
 
 
-def model_moments(params: dict, n_age_cols: int | None = None, **sim_kwargs) -> dict:
-    """`n_age_cols` as in moments_from_panel. With a lifecycle panel the first
-    k simulated years do not depend on how many years follow (same RNG calls,
-    in the same order), so only min(n_years_keep, n_age_cols) years are
-    simulated -- identical moments, less work (tests/test_age_window.py)."""
+def model_moments(params: dict, n_age_cols: int | None = None, d5_gap: int = 5,
+                  cross_section: bool = False, **sim_kwargs) -> dict:
+    """`n_age_cols`, `d5_gap`, `cross_section` as in moments_from_panel. With
+    a lifecycle panel the first k simulated years do not depend on how many
+    years follow (same RNG calls, in the same order), so only
+    min(n_years_keep, n_age_cols) years are simulated -- identical moments,
+    less work (tests/test_age_window.py)."""
     if n_age_cols is not None and sim_kwargs.get("lifecycle", True):
         sim_kwargs = dict(sim_kwargs)
         sim_kwargs["n_years_keep"] = min(sim_kwargs.get("n_years_keep", 36), n_age_cols)
     return moments_from_panel(simulate_log_annual_earnings(params, **sim_kwargs),
-                              n_age_cols=n_age_cols)
+                              n_age_cols=n_age_cols, d5_gap=d5_gap,
+                              cross_section=cross_section)

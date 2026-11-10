@@ -4105,6 +4105,128 @@ match the data (Poland: 25–55). New outputs go to `output/pol_v3_kmvmethod/`.
 σ ≤ 2) and F1–F7 (a 3 × 11 grid fitted to the moments). Steps A2–A4 and B4 are
 numerical details. Point 4 (§31.4) measures each one separately.
 
+### 31.2 Replicating KMV's Table 3 with the KMV method
+
+**Implementation.** Everything is an option; the defaults are unchanged, bit
+for bit (`tests/test_kmv_method.py`, 11 tests; the 12 older tests pass too).
+- `simulate_log_annual_earnings(..., kmv_euler=True)`: jump probability λ·dt
+  and Euler decay (1 − β·dt) per step (A2–A3). With `steps_per_quarter=4`
+  this gives KMV's 16 steps per year (A4). Reset (A1) and the stationary start
+  with burn-in (B1–B3) already existed (`reset_jumps`, `lifecycle=False`,
+  `burn_in_years`).
+- `moments_from_panel(..., cross_section=True, d5_gap=4)`: KMV's
+  one-cross-section moments (C1–C3).
+- `kmv_earnings/kmv_method.py`: the bundle `KMV_SIM` (reset, Euler, 16/yr,
+  stationary start, 25-yr burn-in, 5 years, one cross-section, 4-yr gap,
+  nsim 5000), `KMV_WEIGHTS` (kurtosis 0.5), `KMV_BOUNDS`/`KMV_UPPER` (E4),
+  `KMV_GUESS` (E2), `KMV_TARGETS` (C6, with 11.55); `estimate_dfls` (E1–E3)
+  and KMV's chain procedure (`kmv_grid`, `kmv_generator`, `kmv_discretize`;
+  F1–F9).
+- **The optimizer is a stand-in.** NEWUOA-H itself needs a Fortran compiler,
+  which this machine does not have (no `gfortran`/`ifort`), and DFO-LS is not
+  installed. `kmv_method.dfls` is a model-based derivative-free trust-region
+  least-squares method of the same class: Gauss-Newton steps on a linear
+  interpolation model of the residual vector (as DFO-GN, Cartis & Roberts
+  2017), Powell's NEWUOA rules for the trust radius and for ρ (ρ falls from
+  `rhobeg` = 5 to `rhoend` = 1e-4), KMV's `maxfun`, and 3 sequential
+  restarts from KMV's guess in KMV's logistic coordinates. It needs 168–306
+  evaluations per estimation (median 199). KMV's paper run needed 441.
+
+**Checks of the building blocks against KMV's own files.**
+1. Moments: `moments_from_panel(cross_section=True, d5_gap=4)` applied to
+   KMV's simulated panel `E/earnings_estimation_paper/yannsim.txt` reproduces
+   all 8 numbers in `E/earnings_estimation_paper/moments.txt` (relative
+   difference < 1e-6; test).
+2. Chain: `kmv_generator` with the grid parameters in
+   `D/earnings_discretization_paper/parameters.txt` reproduces `y1grid`,
+   `y2grid`, `y1markov`, `y2markov`, `y1dist`, `y2dist`, `y1trans`,
+   `y1trans_qu` and `ymarkov_combined.txt` to the printed precision (max.
+   difference 2e-8; test). The ergodic variance is 0.8464, the 0.846 of §29.9.
+3. Simulation at KMV's parameters (`KMV_PAPER_PARAMS`, 400k workers): var log
+   0.697, var Δ1 0.232, var Δ5 0.465, kurt Δ1 16.35, kurt Δ5 12.98, fractions
+   0.554 / 0.665 / 0.846. KMV's code output: 0.696, 0.229, 0.464, 16.53,
+   12.06, 0.557, 0.673, 0.851. Only kurt Δ5 is off (12.98 vs 12.06), and
+   §29.7 showed that at nsim = 5000 its SD across seeds is 0.96. KMV's
+   number is a single draw.
+
+**Estimation** (`scripts/kmv_method_replication.py`,
+`output/pol_v3_kmvmethod/replication/`). Targets `KMV_TARGETS`, KMV method in
+full. Each estimate is also scored on a 400 000-worker panel with another seed
+(`f_big`, KMV objective), so that estimates from different nsim are comparable.
+
+| | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ (reset) | hl₂ (yr) | f_big |
+|---|---|---|---|---|---|---|---|---|---|
+| **Table 3** (rounded) | 0.080 | 0.761 | 1.74 | 0.007 | 0.009 | 1.53 | 0.655 | 10.8 | 0.0256 |
+| **KMV paper** (`parameters.txt`, unrounded) | 0.0799 | 0.762 | 1.735 | 0.00656 | 0.00939 | 1.526 | 0.603 | 10.9 | 0.0161 |
+| KMV's own re-run (`E/earnings_estimation_output/`) | 0.0799 | 0.754 | 1.734 | 0.00653 | 0.00921 | 1.527 | 0.611 | 11.0 | 0.0166 |
+| **DFLS, nsim 5000, 40 seeds: mean** | 0.0765 | 0.795 | 1.721 | 0.00785 | 0.0104 | 1.485 | **0.604** | 9.6 | 0.0250 |
+| sd across seeds | 0.0056 | 0.147 | 0.112 | 0.00095 | 0.0020 | 0.123 | 0.033 | 1.2 | |
+| z = (paper − mean)/sd | 0.62 | −0.23 | 0.12 | −1.35 | −0.48 | 0.33 | | | |
+| DFLS, nsim 50 000, 8 seeds: mean | 0.0772 | 0.843 | 1.766 | 0.00830 | 0.0092 | 1.400 | 0.604 | 9.9 | 0.0121 |
+| sd across seeds | 0.0067 | 0.189 | 0.083 | 0.00104 | 0.0009 | 0.077 | 0.017 | 0.7 | |
+| DFLS, nsim 200 000, 2 seeds: mean | 0.0815 | **1.000 (bound)** | 1.822 | 0.00907 | 0.0093 | 1.365 | 0.612 | 9.4 | **0.0093** |
+| DE (our optimizer), nsim 50 000, seed 7 | 0.0580 | 0.374 | 1.644 | 0.00442 | 0.0089 | 1.678 | 0.560 | 13.0 | 0.0177 |
+
+**Verdict: Table 3 is replicated within simulation noise.**
+- With KMV's nsim = 5000 the published estimate lies inside the distribution
+  of the method's estimator for every parameter (|z| ≤ 1.35; the largest is
+  λ₂). The persistent component's ergodic variance is 0.604 ± 0.033
+  against the paper's 0.603.
+- KMV's own two runs (paper vs re-run) differ by 1–2% in β₁, β₂ and λ₂. Our
+  seed-to-seed SDs are much larger (β₁ 19%, λ₂ 12%). KMV's two runs are close
+  because they share the same random numbers, and therefore the same noise.
+- Table 3's rounding is not innocuous: λ₂ 0.00656 → 0.007 lifts var₂ from
+  0.603 to 0.655 and doubles f_big (0.0161 → 0.0256). §29.7 already noted
+  this for the level (0.70 → 0.75).
+
+**What the larger panels show about the method itself** (this is the "noise
+vs method" separation asked for):
+- **var₂ is the robust object.** It is 0.60–0.61 at every nsim and for every
+  optimizer except one DE run (0.56). The persistent half-life is 9–11 years
+  throughout.
+- **The split λ₂ vs σ₂ and the whole transitory block are weakly
+  identified.** As nsim grows, DFLS moves to more frequent, smaller
+  persistent jumps (λ₂ 0.0066 → 0.0091, σ₂ 1.53 → 1.37) and to **β₁ = 1, the
+  upper bound of KMV's box** (E4). That point fits the 400k panel 42% better
+  than the paper's (f_big 0.0093 vs 0.0161). So **the paper's β₁ = 0.76 is a
+  small-sample draw from a local search** that started at 0.7 (`MakeGuess`).
+  The noise-free version of KMV's own method sits on its own bound.
+- **DE overfits at 50 000.** It finds a lower in-sample f than any DFLS run
+  (0.0107) but a worse f_big (0.0177). In KMV's design, kurtosis and the
+  fractions come from one change per worker (C2), i.e. 50 000 changes. v3
+  pools 50 000 × 30 = 1.5 million. The global optimizer then exploits the
+  noise of a single panel. **Decision: in §31.3–31.4 every variant with KMV's
+  ergodic design is estimated with 200 000 workers and scored with 400 000.**
+  Lifecycle variants keep 50 000 / 100 000 like v3. nsim is noise, not
+  method: KMV's 5000 enters only as its own decomposition row (§31.4).
+
+**KMV's discretization procedure: one point does not replicate.**
+(`scripts/kmv_method_disc_check.py`, `replication/disc_check.json`)
+- The published chain, simulated exactly as `D/Simulate.f90` describes
+  (Euler I + dt·Q, ergodic start, 16 steps per year, 5 years, 50 000
+  workers, 10 seeds of iid uniforms), gives:
+
+  | | var log | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | < 10% | < 20% | < 50% |
+  |---|---|---|---|---|---|---|---|---|
+  | KMV `D/…paper/moments.txt` | 0.737 | 0.212 | 0.490 | **15.55** | 12.23 | 0.632 | 0.712 | 0.827 |
+  | published chain, our simulation (mean ± sd over 10 seeds) | 0.737 ± 0.008 | 0.221 ± 0.003 | 0.469 ± 0.005 | **11.86 ± 0.28** | 10.50 ± 0.17 | 0.640 | 0.704 | 0.820 |
+
+- The level matches. The Δ moments do not: kurt Δ1 is 13 SDs away. Every
+  matrix is reproduced to 2e-8 (check 2), so the gap is in how their code
+  simulates the chain or draws its random numbers. Variants tried (expm
+  quarterly, (I + dtQ)⁴ quarterly, other Euler steps, shared or shifted
+  uniforms for the two components) do not reproduce 15.55 either. **The
+  cause is not identified**; it would need the Fortran compiled and run
+  (Intel `RANDOM_NUMBER`, OpenMP).
+- Consequence: refitting the grid with their procedure and our simulator
+  (3 seeds) gives a wider persistent grid (width 6.4–7.2 vs 5.70) and ergodic
+  var(log e) **0.88–0.90 instead of 0.846** (z₂ 0.71–0.73 vs 0.647). The
+  refit compensates for the missing kurtosis with farther grid points.
+- **For §31.3, therefore, "KMV's procedure" applied to Poland is compared
+  both with the published KMV chain and with KMV's parameters run through
+  the same code and seed (0.887 / z₂ 0.715, seed 7755).** Only the second is
+  like for like.
+
 ---
 
 ## Open decisions (not yet settled)
