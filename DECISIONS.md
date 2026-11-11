@@ -4389,6 +4389,202 @@ the data.
   The same happens for the US (§31.2: 0.887 vs the published 0.846).
 - The like-for-like comparison with KMV follows in §31.5.
 
+### 31.4 Decomposition: one KMV element at a time
+
+**Setup** (`scripts/pol_v3_kmvmethod.py --variant <element>`, output
+`output/pol_v3_kmvmethod/decomp/<element>/`).
+- Start from v3 and switch one element of §31.1 to KMV's version. Everything
+  else stays v3: additive, lifecycle from z = 0, ages 25–55, 24 steps/yr,
+  equal weights, our box, 50k / 100k workers.
+- Smaller budget, as briefed: one DE seed (7; maxiter 100, popsize 12, NM
+  polish 400, warm start at Table 3) and one Nelder-Mead from v3's estimate
+  (800 iterations). Canonical = the lower OOS f.
+- The `dfls` row uses KMV's optimizer instead (from `MakeGuess` and from
+  v3's estimate). Their logistic transform is part of it, so that row also
+  carries KMV's box.
+- The pair row `reset+ergodic` was added. §29.7 suggested the two elements
+  belong together: each jump type reproduces Table 2 only in its own design.
+- **The `ergodic` row has only its NM start.** Its DE start (additive
+  jumps, so no exact burn-in, about 5 s per evaluation) was in its final NM
+  polish when the session ended on 2026-11-11 at about 22:30, and the
+  process died with it. The NM start from v3 fits as well as v3 itself (OOS
+  f 0.0075), and the reset pair gives the same var₂ with both of its starts
+  (0.585 / 0.579). A DE re-run (about 6 h) was not repeated.
+- Lifecycle rows simulate ages 25–55 like the data. The ergodic rows have no
+  ages (§31.3). They use 200k / 400k workers, with true 5-year changes and 6
+  years kept.
+- Columns:
+  - var₂ uses the formula of the row's jump type: λσ²/2β additive,
+    λσ²/(λ + 2β) reset;
+  - half-life: ln2/β₂ additive, ln2/(β₂ + λ₂) reset (§29.8);
+  - chain = ergodic var(log e) of our 5 × 15 chain, with `match_var_log` in
+    the row's own design;
+  - f = OOS objective with the row's weights; in brackets, equal weights.
+    f is comparable across rows only for the same design and "Δ5" gap.
+
+| element switched to KMV | var₂ | ergodic sd z₂ | half-life z₂ (yr) | chain var(log e), 5×15 | f OOS | at a bound |
+|---|---|---|---|---|---|---|
+| none: **v3** (small budget) | **1.244** | 1.115 | 30.1 | **1.498** | 0.0076 | – |
+| A1 reset jumps | 1.230 | 1.109 | 16.1 | 1.436 | 0.0227 | β₂ (lower) |
+| A2–A4 16 steps/yr, Euler, λ·dt | 1.189 | 1.091 | 27.7 | 1.443 | 0.0139 | – |
+| **B1–B3, C1–C2 ergodic cross-section** (additive; NM start only, see below) | **0.584** | 0.764 | 14.5 | **0.596** | 0.0075 | – |
+| C3 4-year "Δ5" gap | **0.849** | 0.921 | 13.6 | **1.074** | 0.0073 | – |
+| D2 kurtosis weight 0.5 | 1.276 | 1.129 | 31.1 | 1.530 | 0.0059 (0.0084) | – |
+| E4 KMV box (β < 1, σ < 2) | 2.629 | 1.621 | 85.4 | 2.579 | 0.0358 | **β₁ (upper)** |
+| B4 nsim 5000 | 1.352 | 1.163 | 33.5 | 1.598 | 0.0087 | – |
+| E1–E3 DFLS from MakeGuess (+ box) | 2.280 | 1.510 | 72.1 | 2.358 | 0.0358 | **β₁ (upper)** |
+| **A1 + B/C: reset in the ergodic cross-section** | **0.585** | 0.765 | 12.8 | **0.785** | 0.0102 | – |
+| **all KMV elements (§31.3)** | **0.573** | 0.757 | 10.0 | **0.772** | 0.0324 (0.0517) | β₁ (upper) |
+| *ref.: v3, full budget (§26.5)* | *1.260* | *1.122* | *30.6* | *1.51* | *0.0076* | – |
+| *ref.: v3_reset, full budget (§29.8)* | *1.228* | | *16.1* | *1.43* | *0.0225* | *β₂* |
+
+Small budget vs full budget: v3 1.244 vs 1.260, reset 1.230 vs 1.228. The
+budget is enough to reproduce the full runs to about 1%.
+
+**What moves the result.**
+1. **The sampling design alone does almost all of it, whatever the jump
+   type.**
+   - The ergodic cross-section with v3's additive jumps gives var₂ 0.584,
+     with a fit as good as v3 (OOS f 0.0075).
+   - With reset jumps it gives 0.585.
+   - Either way that is 98% of the full method's move from v3
+     (1.244 → 0.573), with equal weights, our box and a true 5-year change.
+   - The chains: 0.596 additive, 0.785 reset, 0.772 for the full method,
+     against 1.498 for v3.
+   - The mechanism (§29.7, point 3): in an ergodic design the level target
+     (0.691) **is** the stationary variance of the process. It pins
+     var₁ + var₂ directly.
+   - In the lifecycle design, everyone starts at z = 0. The observed
+     variance at ages 25–55 is a partial build-up, and the ergodic variance
+     is an extrapolation beyond the age window. For Poland it is about twice
+     the level (chain 1.50 vs 0.69).
+   - The jump type matters only inside the lifecycle design. Reset alone
+     barely moves var₂ (1.23) but halves persistence (30 → 16 yr), with a
+     3× worse fit (§29.8). In the ergodic design both jump types fit and give
+     the same var₂. §29.7's "each spec only in its own design" concerns the
+     fit to Table 2 at KMV's parameters, not what the Polish data imply.
+2. **The 4-year "Δ5" is the largest single element**: var₂ 1.24 → 0.85,
+   chain 1.50 → 1.07, at an equally good fit (0.0073).
+   - Matching a 4-year model change to a 5-year data change asks the
+     process for more variance growth per year. The estimate meets that
+     with more frequent, faster-reverting persistent shocks: λ₂ 0.0100 →
+     0.0126, β₂ 0.0058 → 0.0128.
+   - The persistent component grows faster but saturates earlier. Its
+     ergodic level is a third lower and its half-life halves (30 → 14 yr).
+   - It is the original code's gap (§29.6–29.7), not a modelling choice. In
+     the full method it acts on top of the design.
+3. **KMV's box pushes the other way** in our design. With β₁ capped at 1 the
+   transitory component cannot be as short-lived as Poland's data want (v3:
+   β₁ 2.8). The persistent component then absorbs the slow part, and var₂
+   doubles (2.3–2.6) at a 4.7× worse fit, flat in var₂ (DE 2.63, NM 3.43).
+   DFLS (with the box) gives the same.
+   - In the full method the box binds as well (β₁ = 1, §31.3). There the
+     level target pins var₂, so it costs fit (kurt Δ1 −16%), not dispersion.
+4. **Small elements**: the kurtosis weight 0.5 (1.28), the 16 steps/yr Euler
+   scheme (1.19) and nsim 5000 (1.35, noise: the NM and DE starts differ by
+   0.1) move var₂ by at most ±0.11. None changes the picture.
+
+### 31.5 Conclusion: Poland vs KMV, both sides computed by the same method
+
+**The missing piece: KMV's targets estimated with our method.**
+`--variant us_v3` (`output/pol_v3_kmvmethod/us_v3/`) puts KMV's own targets
+(`KMV_TARGETS`) through the v3 method. GKOS's sample is men aged 25–60, so
+the model uses the full 36-year panel; Poland uses ages 25–55, each matching
+its data.
+- Budget: one DE seed (small budget), as in §31.4.
+- Result: λ₁ 0.129, β₁ 2.91, σ₁ 2.04, λ₂ 0.00851, β₂ 0.00778, σ₂ 1.370.
+  var₂ 1.027, half-life 22.3 yr, 5 × 15 chain 1.245 (z₂ 1.143).
+- Fit: OOS f = 0.0003. Our design fits KMV's targets almost exactly.
+- The KMV-method side of the US is §31.2. The two runs at 200k agree
+  (var₂ 0.611, hl₂ 9.4). Their 5 × 15 chain in KMV's design
+  (`scripts/kmv_method_us_chain.py`) is 0.771 (z₂ 0.637); KMV's paper
+  parameters give 0.776.
+
+**Poland vs KMV in three versions.**
+
+| version | Poland | KMV (US) | Poland / KMV |
+|---|---|---|---|
+| **1. Our method on both sides** (additive, lifecycle, ages of the data) | | | |
+| var₂ (additive formula) | 1.260 | 1.027 | **1.23** |
+| half-life z₂ | 30.6 yr | 22.3 yr | 1.37 |
+| chain var(log e), 5×15 | 1.51 | 1.245 | **1.21** |
+| chain z₂ | 1.39 | 1.14 | 1.22 |
+| **2. KMV's method on both sides** (reset, ergodic, 4-yr gap, weight 0.5, box) | | | |
+| var₂ (reset formula) | 0.573 | 0.611 | **0.94** |
+| half-life z₂, ln2/(β₂ + λ₂) | 10.0 yr | 9.4 yr | 1.06 |
+| chain var(log e), our 5×15 | 0.772 | 0.771 | **1.00** |
+| chain var(log e), KMV's 3×11 procedure (same code, seed 7755) | 0.879 | 0.887 | **0.99** |
+| chain z₂, KMV's procedure | 0.675 | 0.715 | 0.94 |
+| **3. Against KMV's published chain** (0.846, z₂ 0.647; §29.9) | | | |
+| Poland v3 (our method), chain 5×15 | 1.51 | 0.846 | 1.78 |
+| Poland v3, chain z₂ | 1.39 | 0.647 | 2.15 |
+| Poland, KMV method, KMV's 3×11 procedure | 0.879 | 0.846 | 1.04 |
+| Poland, KMV method, z₂ | 0.675 | 0.647 | 1.04 |
+
+**Answer: no. The main conclusion does not hold in its strong form when both
+sides are computed with exactly the same method.**
+- The "1.7–2× KMV" of §29.9, §30 and §26–28 compared **Poland under our
+  method** with **KMV under KMV's method** (row 3, first two lines). Most of
+  that gap is the method, not the countries.
+- **KMV's method on both sides: no difference.** Poland and the US have the
+  same long-run dispersion, to within 0–6%: chain 0.772 vs 0.771; with
+  KMV's procedure 0.879 vs 0.887. Persistence is the same too (10.0 vs 9.4
+  yr).
+  - This is close to a mechanical result. In KMV's ergodic design the level
+    target is the stationary variance (§31.4, point 1; with additive jumps as
+    well). Poland's level
+    target (0.691) is almost the same as KMV's (0.70).
+  - The Polish change moments (var Δ1 0.26 vs 0.23, var Δ5 0.48 vs 0.46,
+    kurt 15.2 vs 17.8) only redistribute that variance between the
+    components.
+- **Our method on both sides: Poland is more dispersed and more persistent,
+  but by about 20%, not 2×.** var₂ 1.26 vs 1.03, chain 1.51 vs 1.25, half-life
+  31 vs 22 yr.
+  - The US value lies just below Poland's bootstrap intervals (§26.6: [1.06,
+    1.44] over years; [1.17, 1.35] detrended). The direction is therefore
+    supported by the Polish sampling uncertainty.
+  - The US side is a single small-budget point without its own interval.
+    Its variance is not part of that statement.
+  - Part of the 20% may come from the different age windows (31 vs 36
+    years): a shorter window extrapolates more of the ergodic variance.
+    This was not separated here. A US run on ages 25–55 would settle it,
+    but GKOS's targets are for 25–60.
+- **Why the two methods disagree so much on levels** (1.5 vs 0.77 for the
+  same Polish data). It is the lifecycle vs ergodic reading of the level
+  target (§31.4, point 1), plus the 4-year gap (point 2). Neither method can
+  tell which reading is right from these 8 moments. That is a modelling
+  choice:
+  - our baseline follows the working paper and the lifecycle structure of
+    the data;
+  - KMV's code treats the 25–60 cross-section as a stationary distribution.
+
+**Consequences.**
+1. The thesis statement "Poland has much larger and more persistent income
+   dispersion than KMV" should be replaced by: "Estimated with the same
+   method as the US benchmark, Poland's persistent risk is about 20% larger
+   and more persistent (our method) or the same (KMV's method)".
+   **The 1.7–2× figure is a method artefact and should not be used.**
+2. For step 2 the v3 chain (1.51) is still our baseline estimate of the
+   Polish process. A like-for-like **HANK benchmark** is then the US chain
+   from our method (`output/pol_v3_kmvmethod/us_v3/chain_ours_5x15/`, 1.245),
+   not KMV's published chain (0.846). Alternatively, use KMV's method on both
+   sides: Poland `kmv/chain_kmv_3x11/` (0.879) vs KMV's published chain
+   (0.846). Which pairing to use is for the supervisor.
+3. The §24.6 calibration failure (one-asset, MPC too low) should be easier
+   with the KMV-method chain (0.77–0.88), which is close to the chain KMV's
+   model calibrates with. Not tested.
+4. The open item on the GER/USA β₂ pins (§29.9) has a new reference: 1.03
+   (our method on KMV's targets) is the like-for-like anchor for a pin in our
+   design. 0.647 is the anchor in KMV's design.
+
+**Not done / limitations.**
+- No bootstrap for the KMV-method estimates (as briefed). The US-v3 point
+  has one small-budget start.
+- The optimizer is a DFLS stand-in, not NEWUOA-H (§31.2).
+- KMV's published discretized moments cannot be reproduced from their chain
+  (§31.2). The 3 × 11 procedure is therefore run with our random numbers on
+  both sides, and compared like for like there.
+
 ---
 
 ## Open decisions (not yet settled)
