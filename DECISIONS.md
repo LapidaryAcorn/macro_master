@@ -4589,6 +4589,20 @@ sides are computed with exactly the same method.**
 
 ## Open decisions (not yet settled)
 
+- **Poland vs KMV: which like-for-like comparison (§31.5, 2026-11-11).** With
+  the same method on both sides Poland's persistent risk is about 1.2× KMV's
+  (our method: var₂ 1.26 vs 1.03, chain 1.51 vs 1.25) or 1.0× (KMV's method:
+  chain 0.77 vs 0.77; KMV's 3 × 11 procedure 0.88 vs 0.89). The 1.7–2×
+  against KMV's published chain (§29.9, §30) is a method artefact. Almost all
+  of it is the lifecycle vs ergodic reading of the level target (§31.4). For
+  the supervisor:
+  (i) the wording of the thesis claim;
+  (ii) the step-2 benchmark: our-method US chain
+  (`output/pol_v3_kmvmethod/us_v3/chain_ours_5x15/`) vs the published KMV
+  chain, or the KMV-method Polish chain (`output/pol_v3_kmvmethod/kmv/`);
+  (iii) whether the lifecycle reading (our baseline) or the ergodic one
+  (KMV's code) is the defensible model of the 25–55 cross-section.
+
 - **One-asset vs two-asset for Poland — REOPENED 2026-10-20 (§24.6).** On the
   v2 chain (`var_log_earns` from `std_loginc`) the one-asset model + death
   does **not** calibrate: MPC max ≈ 0.07 vs 0.20, HtM 6%. Robust to 9 starting

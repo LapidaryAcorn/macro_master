@@ -22,6 +22,7 @@ LABEL = {
     "ergodic": "B1–B3, C1–C2 ergodic cross-section", "gap4": "C3 4-yr gap",
     "kurtw": "D2 kurtosis weight 0.5", "box": "E4 KMV box", "nsim5000": "B4 nsim 5000",
     "dfls": "E1–E3 DFLS from MakeGuess",
+    "reset+ergodic": "A1 + B/C reset in the ergodic cross-section",
 }
 
 
