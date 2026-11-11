@@ -182,3 +182,21 @@ def test_dfls_rosenbrock():
     res = lambda x: np.array([10 * (x[1] - x[0] ** 2), 1 - x[0]])
     x, f, nf = dfls(res, np.array([-1.2, 1.0]), rhobeg=0.5, rhoend=1e-8, maxfun=2000)
     assert f < 1e-10 and np.allclose(x, [1, 1], atol=1e-4)
+
+
+def test_exact_reset_burn_matches_stepwise():
+    """exact_reset_burn draws the end-of-burn-in state from its exact law;
+    moments must agree with step-by-step burn-in within Monte Carlo error."""
+    from kmv_earnings.kmv_method import KMV_SIM, KMV_PAPER_PARAMS
+    R = {}
+    for fast in (False, True):
+        ms = [model_moments(KMV_PAPER_PARAMS, **dict(KMV_SIM, n_workers=40_000, seed=50 + s,
+                                                     exact_reset_burn=fast)) for s in range(6)]
+        R[fast] = {k: (np.mean([m[k] for m in ms]), np.std([m[k] for m in ms], ddof=1) / np.sqrt(6))
+                   for k in MOMENT_ORDER}
+    for k in MOMENT_ORDER:
+        (a, sa), (b, sb) = R[False][k], R[True][k]
+        assert abs(a - b) < 4 * np.hypot(sa, sb) + 1e-12, k
+    with pytest.raises(ValueError):
+        simulate_log_annual_earnings(P, n_workers=10, n_years_keep=2, lifecycle=False,
+                                     burn_in_years=1, exact_reset_burn=True)

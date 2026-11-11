@@ -74,6 +74,14 @@ ALL_KMV = ["reset", "euler16", "ergodic", "gap4", "kurtw", "box"]
 
 
 def config(variant: str) -> dict:
+    if variant == "us_v3":
+        # KMV's own US targets (E/SetParameters.f90 l. 49-59) estimated with OUR
+        # v3 method; GKOS ages 25-60 = the full 36-year panel (Sec 31.5)
+        cfg = config("v3")
+        cfg.update(variant="us_v3", targets="kmv", out=os.path.join(ROOT, "us_v3"))
+        cfg["sim"] = dict(n_workers=50_000, n_years_keep=36)
+        cfg["oos"] = dict(n_workers=100_000, n_years_keep=36, seed=987654)
+        return cfg
     els = ALL_KMV if variant == "kmv" else ([] if variant == "v3" else variant.split("+"))
     for e in els:
         assert e in ELEMENTS, e
@@ -102,6 +110,10 @@ def config(variant: str) -> dict:
         # one cross-section uses ~30x fewer changes than v3's pooled panel:
         # 200k workers there (Sec 31.2: at 50k DE fits simulation noise)
         sim["n_workers"] = 200_000
+    if "ergodic" in els and "reset" in els:
+        # exact law of the end-of-burn-in state (simulate.py, Sec 31.3): same
+        # process and design, ~5x faster; additive ergodic stays step-by-step
+        sim["exact_reset_burn"] = True
     if "nsim5000" in els:
         sim["n_workers"] = 5_000
     oos = dict(sim, seed=987654,
@@ -109,7 +121,13 @@ def config(variant: str) -> dict:
     out = os.path.join(ROOT, "kmv" if variant == "kmv" else os.path.join("decomp", variant))
     return {"variant": variant, "elements": els, "sim": sim, "oos": oos, "bounds": bounds,
             "weights": weights, "out": out, "reset": "reset" in els,
-            "ergodic": "ergodic" in els, "dfls": "dfls" in els}
+            "ergodic": "ergodic" in els, "dfls": "dfls" in els, "targets": TARGETS}
+
+
+def load_targets(cfg):
+    if cfg["targets"] == "kmv":
+        return dict(km.KMV_TARGETS)
+    return json.load(open(cfg["targets"]))
 
 
 def f_obj(m, targets, weights=None):
@@ -136,10 +154,19 @@ def score(p, cfg, targets):
 
 def run_start(name, cfg, args):
     path = os.path.join(cfg["out"], "runs", f"{name}.json")
-    if os.path.exists(path):
-        print(f"[{cfg['variant']}/{name}] exists, skipped", flush=True)
+    if os.path.exists(path) or os.path.exists(path + ".running"):
+        print(f"[{cfg['variant']}/{name}] exists or running, skipped", flush=True)
         return
-    targets = json.load(open(TARGETS))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path + ".running", "w").write(str(os.getpid()))
+    try:
+        _run_start(name, cfg, args, path)
+    finally:
+        os.remove(path + ".running")
+
+
+def _run_start(name, cfg, args, path):
+    targets = load_targets(cfg)
     v3 = json.load(open(V3_PARAMS))
     t0 = time.time()
     sim, b, w = cfg["sim"], cfg["bounds"], cfg["weights"]
@@ -203,7 +230,7 @@ def bounds_position(p, b):
 
 
 def finalize(cfg, kmv_chain=False):
-    targets = json.load(open(TARGETS))
+    targets = load_targets(cfg)
     rd = os.path.join(cfg["out"], "runs")
     runs = [json.load(open(os.path.join(rd, f))) for f in sorted(os.listdir(rd)) if f.endswith(".json")]
     runs.sort(key=lambda r: r["oos_f"])

@@ -3940,6 +3940,78 @@ superseded additive anchor.
 - The chain/formula ratio is similar for both (Poland +10%, KMV +7% on z₂).
   So formula-based Poland intervals (§26.6, §27) can be read against 0.65.
 
+### 29.10 Where to check it yourself: paths and line numbers in the package (2026-11-10)
+
+Root: `data/kmv_replication/231376-V1 (2)/20160042_data/Replication/EarningsProcess/`
+(local copy of openICPSR 231376; `E/` = `EarningsEstimation/`,
+`D/` = `EarningsDiscretization/`). Open the files in any editor with line
+numbers. Every line below was re-read on 2026-11-10. §31.1 has the full
+inventory.
+
+**1. Reset jumps, ρ = 0.**
+- `E/Simulate.f90` **l. 45–46**: `IF(y1jumpI(in,it)==1) THEN` /
+  `y1sim(in,it+1) = rho1*y1sim(in,it) + sigma1*y1rand(in,it+1)`. The
+  persistent component is the same at **l. 57–58** (`rho2`, `sigma2`). On a
+  jump the new value is ρ·(old) + σ·ε. With ρ = 0 the old value is discarded:
+  a reset. An additive jump would be ρ = 1.
+- `E/Simulate.f90` **l. 48–49** and **60–61**: without a jump,
+  `y(it+1) = (1.0 - dt*delta)*y(it)` (Euler decay; `AdditiveDrift = 0` at
+  `E/SetParameters.f90` **l. 21**).
+- ρ is not estimated: `E/SetParameters.f90` **l. 30–31**
+  (`EstimateRho1 = 0`, `EstimateRho2 = 0`).
+- ρ is set to 0: `E/MakeGuess.f90` **l. 10** (`rho1guess = 0.0`) and
+  **l. 17** (`rho2guess = 0.0`); `E/dfovec.f90` **l. 70–71** and **77–78**
+  use the guesses when ρ is not estimated.
+- Output: `E/earnings_estimation_paper/parameters.txt` **l. 7–8**
+  (`rho1 0.0`, `rho2 0.0`).
+- The stationary start uses λσ²/(2δ + λ(1 − ρ²)): `E/Simulate.f90`
+  **l. 14** and **l. 21**. This is the reset variance at ρ = 0.
+
+**2. Objective weights.**
+- `E/dfovec.f90` **l. 126**: `lweight = 1.0` (every moment 1).
+- **l. 145**: `lweight(im) = 0.5` for kurt Δ1 (l. 143–148 is the kurt Δ1
+  block). **l. 162**: `lweight(im) = 0.5` for kurt Δ5 (block l. 160–165).
+  (l. 156 sets 0.5 for skewness Δ5, which is switched off at
+  `E/SetParameters.f90` l. 42.)
+- Each residual is `sqrt(lweight(im))*(model/target - 1.0)`: l. 130, 135,
+  146, 151, 163, 173, 178, 183.
+- What is minimized is the plain sum of squares of these residuals:
+  `E/newuob-h.f` **l. 344** (`call dfovec(...)`), **l. 349**
+  (`call f_value(...)`), and `f_value` at **l. 622–629** (`F = F + v_err(m1)**2`).
+  The `objective fun` printed at `E/dfovec.f90` l. 187–190 is only a log line.
+- Which moments are on: `E/SetParameters.f90` **l. 37–47**. Targets: l. 49–59.
+- The same weights in the discretization: `D/dfovec.f90` **l. 82** and **l. 99**.
+
+**3. Building the chain.**
+- Grid size 3 × 11: `D/Parameters.f90` **l. 5–6**. Simulation for the fit:
+  nsim 50 000, dt 0.25, 20 quarters: `D/Parameters.f90` l. 7–9.
+- Parameters fed in (rounded) and ρ = 0: `D/SetParameters.f90` **l. 23–31**
+  (ρ at **l. 26** and **l. 31**).
+- Grid points: `D/TransitionMatrix.f90` **l. 36–53**, with `PowerSpacedGrid`
+  at `D/Procedures.f90` l. 448–483.
+- Jump landings: `D/TransitionMatrix.f90` **l. 75–98** (component 1) and
+  **l. 100–123** (component 2). The normal CDF is centred at
+  `rho1*y1grid(iy)` (l. 79, 81, 83) and `rho2*y2grid(iy)` (l. 104, 106, 108),
+  i.e. at 0. Rows are renormalized at l. 96 / 121; times λ at l. 98 / 123.
+- Drift: **l. 125–173** (`DriftPointsVersion = 2`, `D/SetParameters.f90`
+  l. 13).
+- Ergodic distribution: l. 181–221.
+- Grid width and spacing fitted to the moments: `D/Estimation.f90`
+  **l. 66–80** (DFLS, `ndfls = 4`); bounds and starting values
+  `D/MakeGuess.f90` **l. 8–20**; the objective `D/dfovec.f90` l. 59–126,
+  targets `D/SetParameters.f90` l. 47–57.
+- Combining the two components into the 33-state generator:
+  `D/CombinedProcess.f90` **l. 28–32** (Kronecker sum); sorting l. 39–55.
+- The published result: `D/earnings_discretization_paper/parameters.txt`
+  (widths and spacing), `ymarkov_combined.txt`, `ygrid_combined.txt`,
+  `ydist_combined.txt`. These are bit-identical to
+  `annual-review/inputs/kmv_process/` (§29.7), and reproduced from the
+  parameters by `kmv_method.kmv_generator` (`tests/test_kmv_method.py`).
+- A direct check of the reset in the chain: in `D/…paper/y2markov.txt`
+  every off-diagonal column has the same jump rate into it from every
+  non-adjacent origin (only the drift neighbours differ). That is a landing
+  distribution that does not depend on the origin.
+
 ---
 
 ## 30. Summary of the v3 stage (2026-11-09)
@@ -4226,6 +4298,96 @@ vs method" separation asked for):
   both with the published KMV chain and with KMV's parameters run through
   the same code and seed (0.887 / z₂ 0.715, seed 7755).** Only the second is
   like for like.
+
+### 31.3 Poland estimated with the KMV method
+
+**Setup** (`scripts/pol_v3_kmvmethod.py --variant kmv`, output
+`output/pol_v3_kmvmethod/kmv/`).
+- Targets: `targets/pol_grid_v3.json`, as in v3.
+- Method: every KMV element of §31.1 except the optimizer and nsim:
+  - A1–A4: reset, Euler, 16 steps per year;
+  - B1–B3, C1–C3: stationary start, 25-year burn-in, one cross-section, a
+    4-year "Δ5";
+  - D2: kurtosis weight 0.5;
+  - E4: KMV's box (λ, σ < 2; β < 1).
+- **Ages.** KMV's design has no ages: it is one cross-section of the
+  ergodic distribution (B1–B3). "Model ages = data ages (25–55)" therefore
+  applies to v3 and to the lifecycle rows of §31.4, not here. In KMV's design
+  the data's age window enters only through the targets.
+- Optimizers: as briefed, 3 DE seeds (7, 101, 202; maxiter 200, popsize 15,
+  NM polish 800, warm start at KMV's `MakeGuess`) and TikTak (4096 Sobol
+  points, 30 local searches, the same warm start). In addition, KMV's own
+  DFLS from `MakeGuess` (`dfls_guess`) and from v3's estimate clipped into
+  the box (`dfls_v3`).
+- Simulation: 200 000 workers in estimation and 400 000 out of sample, with
+  another seed (§31.2 decision). Canonical = the lowest OOS f.
+- **A speed-up, exact in distribution.** In KMV's design 400 of the 480
+  steps are burn-in. With reset jumps the state at the end of the burn-in has
+  a closed-form law. If there was no jump (probability (1 − p)^B), it is
+  z₀·d^B. Otherwise it is ε·d^K, where K is the number of steps since the
+  last jump (truncated geometric).
+  - `simulate_log_annual_earnings(..., exact_reset_burn=True)` draws it
+    directly. It is about 5× faster, keeps common random numbers, and is off
+    by default.
+  - Against step-by-step burn-in, all 8 moments agree within Monte Carlo
+    error (12 seeds × 100k, |z| ≤ 1.46; `test_exact_reset_burn_matches_stepwise`).
+  - It is used for every reset + ergodic variant. The additive ergodic row of
+    §31.4 still steps through the burn-in.
+- **Run history.** The first launch (2026-11-10) died with the session
+  overnight. A second launch through WMI could not start multiprocessing
+  workers. The third (2026-11-11, 14:40) ran to completion.
+  - Two DFLS starts made at 200k with step-by-step burn-in are kept in
+    `kmv/superseded/`. They give var₂ 0.584 / 0.583, the same as below. They
+    were re-run so that every start is scored on the same OOS panel.
+  - So was an early 50k DFLS start (var₂ 0.591).
+
+**All six starts land in one valley for the persistent component.**
+
+| start | in-sample f | OOS f | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ (reset) | hl₂ (yr) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **dfls_v3 (canonical)** | 0.0254 | **0.0324** | 0.113 | **1.000 (bound)** | 1.762 | 0.00812 | 0.00917 | 1.366 | **0.573** | **10.0** |
+| de_seed101 | 0.0247 | 0.0329 | 0.116 | 1.000 | 1.735 | 0.00812 | 0.00950 | 1.386 | 0.576 | 9.8 |
+| de_seed7 | 0.0247 | 0.0329 | 0.116 | 1.000 | 1.735 | 0.00812 | 0.00950 | 1.387 | 0.576 | 9.8 |
+| de_seed202 | 0.0247 | 0.0330 | 0.116 | 1.000 | 1.732 | 0.00812 | 0.00954 | 1.389 | 0.576 | 9.8 |
+| tiktak | 0.0302 | 0.0366 | 0.100 | 0.751 | 1.659 | 0.00795 | 0.01045 | 1.439 | 0.570 | 9.4 |
+| dfls_guess | 0.0310 | 0.0379 | 0.100 | 0.704 | 1.613 | 0.00795 | 0.01121 | 1.478 | 0.571 | 9.0 |
+
+- The **three DE seeds agree to 3 digits**. The persistent component is the
+  same in every start: var₂ 0.570–0.576, half-life 9.0–10.0 years.
+- **β₁ sits on KMV's bound of 1 per quarter** in the four best starts.
+  TikTak and DFLS-from-guess stop inside the box (β₁ 0.70–0.75) with a
+  12–17% worse OOS f. Their persistent component is the same. This is the US
+  pattern of §31.2 (the noise-free KMV estimator also puts β₁ on its bound).
+  In v3, with no such box, Poland's β₁ is 2.8.
+- The OOS f (0.032) is above the in-sample f (0.025) for every start. In
+  KMV's design kurtosis and fractions rest on one change per worker. The
+  estimate still fits some noise of the 200k panel, and the gap is the same
+  across starts, so it does not affect the ranking.
+
+**Fit** (OOS, model vs data, relative error): var log 0.675 vs 0.691
+(−2.3%); var Δ1 0.259 vs 0.260 (−0.2%); var "Δ5" 0.485 vs 0.477 (+1.8%);
+**kurt Δ1 12.85 vs 15.24 (−15.7%)**; kurt "Δ5" 11.04 vs 9.88 (+11.8%);
+fractions 0.483 / 0.614 / 0.828 vs 0.450 / 0.669 / 0.843 (+7.3%, −8.2%,
+−1.8%). The KMV method fits Poland's tails worse than v3 (OOS f 0.032 vs
+0.0076; the two f are not on the same scale: different weights, a different
+design and a 4-yr "Δ5"). The β₁ bound is part of the reason: at β₁ = 1 the
+transitory shocks cannot be short-lived enough to make Δ1 as leptokurtic as
+the data.
+
+**Chains** (`kmv/chain_ours_5x15/`, `kmv/chain_kmv_3x11/`).
+
+| chain | var(log e) | z₁ | z₂ |
+|---|---|---|---|
+| ours, 5 × 15 (conditional-mean grid, variance rescale, one scale matching year-1 var(log y) of the continuous process in KMV's design: `kmv_method.our_chain_kmv_design`) | **0.772** | 0.173 | 0.598 |
+| KMV's procedure, 3 × 11 (grid fitted by DFLS to the Polish targets, seed 7755; widths 3.64 / 5.59, `gridpar` 0.86 / 0.31) | **0.879** | 0.203 | 0.675 |
+
+- The two discretizations of one estimate differ by 14% in total. Most of
+  that is KMV's procedure, which chooses the grid to hit the **data**
+  moments (F3), not the process's moments. With 3 transitory points it cannot
+  produce kurt Δ1 (11.35 vs 15.24 targeted) and widens the persistent grid
+  to compensate. The fitted chain has var log 0.758 against a 0.691 target.
+  The same happens for the US (§31.2: 0.887 vs the published 0.846).
+- The like-for-like comparison with KMV follows in §31.5.
 
 ---
 

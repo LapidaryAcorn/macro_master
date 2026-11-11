@@ -72,6 +72,7 @@ def simulate_log_annual_earnings(
     deterministic_arrival: bool = False,
     reset_jumps: bool = False,
     kmv_euler: bool = False,
+    exact_reset_burn: bool = False,
 ) -> np.ndarray:
     """
     Return log annual earnings, shape (n_workers, n_years_keep).
@@ -100,6 +101,17 @@ def simulate_log_annual_earnings(
     and the AER text, eq. 33-34 (DECISIONS Sec 29.5, 29.7). Stationary
     variance lam*sig^2/(lam + 2*beta). Default False = additive, bit-for-bit
     unchanged (same RNG calls; tests/test_reset_jumps.py).
+
+    `exact_reset_burn` (needs reset_jumps, burn_in_years > 0): draw the state
+    at the end of the burn-in from its exact distribution instead of stepping
+    through it. Under resets with per-step jump probability p and decay d the
+    state after B steps is z0*d^B if no jump occurred (probability (1-p)^B),
+    else eps*d^K with K = steps since the last jump, P(K=k) prop. to
+    p(1-p)^k, k < B. One uniform and one normal per worker and component,
+    so common random numbers are kept; the distribution of every simulated
+    path is the same as with step-by-step burn-in (tests/test_kmv_method.py),
+    the random streams are not. About 6x faster in KMV's design (400 of 480
+    steps are burn-in). Default False: unchanged.
     """
     lam = np.array([params["lambda1"], params["lambda2"]]) / steps_per_quarter
     beta = np.array([params["beta1"], params["beta2"]]) / steps_per_quarter
@@ -126,6 +138,27 @@ def simulate_log_annual_earnings(
     spy = 4 * steps_per_quarter                     # steps per year
     total_s = spy * (burn_in_years + n_years_keep)
     burn_s = spy * burn_in_years
+
+    if exact_reset_burn and burn_s > 0:
+        if not reset_jumps or deterministic_arrival:
+            raise ValueError("exact_reset_burn needs reset_jumps and Poisson arrival")
+        B = burn_s
+        for j in range(2):
+            u = rng.random(n_workers)
+            eps = rng.standard_normal(n_workers) * sig[j]
+            p = float(p_jump[j])
+            if p <= 0.0:
+                z[:, j] = z[:, j] * decay[j] ** B
+                continue
+            l1p = np.log1p(-p)
+            q = np.exp(B * l1p)                       # P(no jump in B steps)
+            jumped = u >= q
+            v = (u - q) / (1.0 - q)                   # uniform on [0, 1) given a jump
+            k = np.ceil(np.log1p(-v * (1.0 - q)) / l1p) - 1.0
+            k = np.clip(np.where(jumped, k, 0.0), 0.0, B - 1)
+            z[:, j] = np.where(jumped, eps * decay[j] ** k, z[:, j] * decay[j] ** B)
+        total_s -= burn_s
+        burn_s = 0
 
     logy = np.empty((n_workers, n_years_keep))
     annual_flow = np.zeros(n_workers)
