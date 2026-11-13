@@ -73,6 +73,7 @@ def simulate_log_annual_earnings(
     reset_jumps: bool = False,
     kmv_euler: bool = False,
     exact_reset_burn: bool = False,
+    chunk_workers: int | None = None,
 ) -> np.ndarray:
     """
     Return log annual earnings, shape (n_workers, n_years_keep).
@@ -112,7 +113,25 @@ def simulate_log_annual_earnings(
     path is the same as with step-by-step burn-in (tests/test_kmv_method.py),
     the random streams are not. About 6x faster in KMV's design (400 of 480
     steps are burn-in). Default False: unchanged.
+
+    `chunk_workers` (v4, DECISIONS Sec 32): simulate the panel in blocks of
+    this many workers, block i with its own generator default_rng([seed, i]),
+    and stack them. Same process and design, workers stay iid; deterministic,
+    so common random numbers are kept. Only the random streams differ from
+    the unchunked panel. At 200k workers in KMV's design it is ~3x faster on
+    12 processes (the 200k arrays do not fit in cache). Default None:
+    unchanged, bit for bit.
     """
+    if chunk_workers is not None and n_workers > chunk_workers:
+        kw = dict(n_years_keep=n_years_keep, steps_per_quarter=steps_per_quarter,
+                  lifecycle=lifecycle, burn_in_years=burn_in_years,
+                  deterministic_arrival=deterministic_arrival, reset_jumps=reset_jumps,
+                  kmv_euler=kmv_euler, exact_reset_burn=exact_reset_burn)
+        sizes = [chunk_workers] * (n_workers // chunk_workers)
+        if n_workers % chunk_workers:
+            sizes.append(n_workers % chunk_workers)
+        return np.vstack([simulate_log_annual_earnings(params, n_workers=n, seed=[seed, i], **kw)
+                          for i, n in enumerate(sizes)])
     lam = np.array([params["lambda1"], params["lambda2"]]) / steps_per_quarter
     beta = np.array([params["beta1"], params["beta2"]]) / steps_per_quarter
     sig = np.array([params["sigma1"], params["sigma2"]])

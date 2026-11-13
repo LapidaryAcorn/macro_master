@@ -4046,8 +4046,13 @@ above KMV)? No. It strengthens it, with one important qualification.**
   further, to no mean reversion at all.
 - **The specification question (§29.5, §29.7–29.8) is settled for this
   conclusion.**
-  - KMV's code uses reset jumps; our baseline stays additive, following the
-    working paper.
+  - KMV's code uses reset jumps; our v3 baseline stays additive.
+    **[Corrected 2026-11-13, §32.]** Additive jumps appear only in the 2016
+    working paper. The published AER 2018 (eq. 33–34 and fn. 29) uses
+    resets, as does the code (`E/Simulate.f90` l. 45–46, ρ = 0). So "the
+    additive baseline follows KMV's paper" is wrong. It follows the
+    working paper only. From v4 (§32) the baseline is reset; v3 (additive)
+    stays as robustness.
   - Re-estimated with resets, Poland's chain has var(log e) 1.43 (additive
     1.51) and z₂ 1.32 (1.39).
   - Against KMV's published chain (0.846 / 0.647) Poland is 1.7× / 2.0× in
@@ -4587,8 +4592,418 @@ sides are computed with exactly the same method.**
 
 ---
 
+## 32. Poland v4: the full KMV specification as the baseline (2026-11-13)
+
+**Why.** The thesis question is whether KMV's conclusions survive a
+different income process. For that, Poland is estimated with exactly KMV's
+method. v4 is the new baseline; v3 (§26–§30, additive, lifecycle) stays
+unchanged as robustness. Its files and targets are not touched. Poland
+only; FRA/GER/USA are not recomputed.
+
+**Correction to §30.** §30 said the additive baseline "follows the working
+paper". Additive jumps are only in the 2016 working paper. The published
+AER 2018 (eq. 33–34 and fn. 29) uses resets, as does KMV's code
+(`E/Simulate.f90` l. 45–46, ρ = 0). The bullet in §30 is corrected in place.
+
+### 32.1 Specification
+
+| element | v4 baseline | §31.1 code |
+|---|---|---|
+| jumps | reset, z′ ~ N(0, σ²) | A1 |
+| decay | Euler, 16 steps per year | A2–A4 |
+| sample | one ergodic cross-section after a 25-yr burn-in (exact law of the end-of-burn state, `exact_reset_burn`), 200 000 workers, CRN; out of sample 400 000 with another seed | B1–B3, C1–C3 |
+| "5-year" change | 4-year gap (`d5_gap = 4`) | C2 |
+| weights | 0.5 on kurt Δ1 and kurt Δ5, 1 otherwise | D2 |
+| box | λ, σ ∈ (·, 2), β ≤ 1 (incl. β₁ ≤ 1) | E4 |
+| targets | `targets/pol_grid_v4.json` = the v3 values (residualized annual log income `std_resid`, ages 25–55, linear trend at the window midpoint, §26); the level target is the variance of residualized log income | – |
+
+- The targets are numerically identical to v3. The file has its own `_meta`
+  block and the `_v4` suffix so that v3 is never overwritten.
+- Model side: KMV's design has no ages (§31.3). The 25–55 window enters
+  only through the targets.
+- Code:
+  - `scripts/pol_v4.py`: estimation, chains, finalize;
+  - `scripts/pol_v4_uncertainty.py`: bootstrap, sandwich, profile,
+    recovery, summary;
+  - `scripts/pol_v4_figures.py`: figures;
+  - output: `output/pol_v4/`.
+- **Performance.** At 200k workers one evaluation is memory-bound. A new
+  option, `simulate_log_annual_earnings(chunk_workers=…)`, simulates in
+  blocks of 50k and stacks them. It is 3× faster in throughput, with the
+  same distribution and its own stream per block. The default (`None`) is
+  bit-identical to before (`tests/test_chunk_workers.py`, 3 tests; the
+  full suite passes).
+
+### 32.2 Multistart estimation (task 1)
+
+- 21 starts:
+  - start 1 from KMV's `MakeGuess`;
+  - starts 2–21 from scrambled Sobol points in the log box (seed 2026).
+- Each start:
+  - DE (popsize 15, maxiter 200, seed 1000 + i);
+  - then bounded NM (800);
+  - then 2 DFLS polishes (rhobeg 1.0); the lower f is kept.
+- Wall time about 50 min per start, 3 lanes × 4 workers, 6.3 h in total.
+- **Canonical = the lowest out-of-sample f** (`de13`).
+
+**Canonical estimate** (`output/pol_v4/estimate/params.json`, `report.json`):
+
+| | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ |
+|---|---|---|---|---|---|---|
+| v4 | 0.1121 | **0.99995 (at the bound)** | 1.730 | 0.00905 | 0.00903 | 1.326 |
+
+| derived (reset formulas) | value |
+|---|---|
+| var₁ = λ₁σ₁²/(λ₁+2β₁) | 0.159 |
+| **var₂ = λ₂σ₂²/(λ₂+2β₂)** | **0.587** |
+| var total | 0.746 |
+| half-life z₁ = ln2/(β₁+λ₁)/4 | 0.16 yr |
+| **half-life z₂** | **9.6 yr** |
+| years between z₂ shocks, 1/(4λ₂) | 27.6 |
+| f in sample / OOS / OOS equal weights | 0.0248 / 0.0280 / 0.0417 |
+
+**Fit** (OOS, 400k):
+
+| moment | target | model | rel. err. |
+|---|---|---|---|
+| var log y | 0.6912 | 0.6877 | −0.5% |
+| var Δ1 | 0.2595 | 0.2501 | −3.6% |
+| var Δ5 (4-yr gap) | 0.4765 | 0.4866 | +2.1% |
+| kurt Δ1 | 15.24 | 13.00 | −14.7% |
+| kurt Δ5 | 9.88 | 10.63 | +7.6% |
+| frac \|Δ1\| < 0.10 | 0.450 | 0.485 | +7.9% |
+| frac \|Δ1\| < 0.20 | 0.669 | 0.617 | −7.8% |
+| frac \|Δ1\| < 0.50 | 0.843 | 0.830 | −1.5% |
+
+**Distribution across starts** (`report.json`, `dist_all` and `dist_within_5pct`):
+
+| | all 21 starts (min – median – max) | 17 starts within 5% of the best OOS f |
+|---|---|---|
+| OOS f | 0.0280 – 0.0282 – 0.0372 | 0.0280 – 0.0289 |
+| in-sample f | 0.0235 – 0.0248 – 0.0270 | – |
+| λ₁ | 0.075 – 0.110 – 0.112 | 0.110 – 0.112 |
+| β₁ | 0.26 – 0.9987 – 1.000 | 0.998 – 1.000 |
+| σ₁ | 1.43 – 1.73 – 1.76 | 1.727 – 1.747 |
+| λ₂ | 0.0019 – 0.00907 – 0.0102 | 0.00905 – 0.00942 |
+| β₂ | 0.0066 – 0.00895 – 0.0101 | 0.00851 – 0.00903 |
+| σ₂ | 1.21 – 1.32 – 2.00 | 1.286 – 1.326 |
+| var₂ | 0.500 – 0.588 – 0.592 | **0.586 – 0.590** |
+| half-life z₂ | 9.6 – 9.6 – 20.3 yr | 9.6 – 9.8 yr |
+
+- 17 of 21 starts land in one basin: var₂ within ±0.35%, hl₂ within 2.5%.
+- One more start (de17) is in the same basin with a worse polish (OOS
+  +9%).
+
+**A second local minimum** (de04, de15; a variant of it in de06):
+
+| | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ | hl₂ | f in | f OOS |
+|---|---|---|---|---|---|---|---|---|---|---|
+| de04 | 0.0746 | 0.260 | 1.43 | 0.00191 | 0.00666 | 2.00 (bound) | 0.500 | 20.2 yr | **0.02350** | 0.03175 |
+| de15 | 0.0746 | 0.261 | 1.43 | 0.00191 | 0.00661 | 1.99 | 0.500 | 20.3 yr | **0.02351** | 0.03187 |
+| de06 | 0.0821 | 0.387 | 1.45 | 0.00556 | 0.01015 | 1.60 | 0.550 | 11.0 yr | 0.02696 | 0.03724 |
+
+- In this minimum the transitory component is slow (β₁ ≈ 0.26 per
+  quarter, half-life ≈ 0.5 yr). The persistent component has rare, huge
+  jumps: one every 130 years, with σ₂ at the bound of 2.
+- **It has a 5% lower in-sample f, but a 13% higher OOS f.** The rare z₂
+  jumps fit the noise of the estimation panel. A z₂ jump every 130 years
+  in a 200k cross-section gives few draws, and they do not replicate on
+  another panel. The OOS criterion (§31.2) rejects it.
+- **The recovery test finds the same minimum** (§32.5, seed 303: β₁ 0.32,
+  var₂ 0.508). It is a real feature of the objective in KMV's design, not a
+  bad start.
+- The profile (§32.4) moves into it for var₂ ≤ 0.8× the estimate.
+- Consequence for the reported uncertainty: the bootstrap below is local.
+  Each rep is polished from the canonical point, so it does not switch
+  basins. The OOS selection between the two basins is a separate decision
+  step and is stated as such.
+
+**β₁ at the bound.**
+- KMV's box caps β₁ at 1 (E4). The canonical β₁ = 0.99995, and 92.5% /
+  94.5% of bootstrap reps (years / residuals) are also at the bound.
+- Without the cap (robustness (b), `nob1`, §32.7):
+  - β₁ ≈ 2.1 and f OOS 0.0112, 2.5× better;
+  - var₂ 0.609 (+4%), hl₂ 9.3 yr.
+- So the cap costs fit, mostly in kurt Δ1 and the fractions. It barely
+  moves the persistent component, which is what matters for the thesis
+  question.
+- The sandwich is therefore reported with β₁ fixed at the bound (5 free
+  parameters, §32.3). The 6-parameter version puts a meaningless ±0.19 on
+  β₁ at a corner.
+
+### 32.3 Uncertainty (task 2)
+
+**Bootstrap** (`output/pol_v4/bootstrap/`, B = 200 per design as in v3):
+- Designs (§26.6, `pol_v3_bootstrap.draw_targets`):
+  - **over years**: years resampled, then the 8 targets recomputed;
+  - **over detrended residuals**: the trend plus resampled detrended
+    deviations.
+- Each rep: DFLS from the canonical estimate, 200k workers, own seed
+  (1 000 000 + i). For each rep: parameters, var₂, half-lives, and the
+  ergodic variance of the 5 × 15 chain built from that rep.
+- **Budget validation** (`validation.json`, 3 reps per design, DFLS vs full
+  DE + NM from the same targets):
+  - f: DFLS is at most 3% higher;
+  - var₂, var total, chain total, chain z₂: within 1%;
+  - λ₂ and β₂ separately: up to 14%, along the ridge that keeps var₂
+    fixed.
+  - So DFLS is adequate for the quantities of interest.
+- Intervals are percentile intervals, recentred on the point estimate
+  (bootstrap means: within 0.3% of it for var₂ and the chain; up to 4% for λ₂).
+
+**Asymptotic sandwich** (`output/pol_v4/smm_se/`, §27 method):
+- V = (G′WG)⁻¹G′W(Ω_data + Ω_sim)WG(G′WG)⁻¹ with W = diag(w_k / m̂_k²) and
+  KMV's weights.
+- G is two-sided at h = 0.02 on an 800k panel. The h = 0.05 version is in
+  the csv; at h = 0.02 vs 0.05 the SEs differ by < 10%.
+- Ω_sim is computed from 100 seeds at 200k.
+- Ω_data is either "raw" (over years) or "detrended" (over residuals),
+  from `pol_v3_smm_se.omega_data`.
+- Delta method for var₂, hl₂, var total, and the chain (numerical chain
+  gradient).
+- **Main version: β₁ fixed at the bound, 5 free parameters.**
+
+**Table: v4 baseline with 95% intervals**
+
+| | estimate | bootstrap over years | bootstrap over residuals | sandwich, Ω raw + sim (β₁ fixed) | sandwich, Ω detrended + sim (β₁ fixed) |
+|---|---|---|---|---|---|
+| λ₁ | 0.1121 | [0.105, 0.119] | [0.105, 0.119] | ±0.0063 | ±0.0067 |
+| β₁ | 0.99995 | [0.9992, 1] (bound) | [0.9992, 1] (bound) | fixed | fixed |
+| σ₁ | 1.730 | [1.682, 1.779] | [1.703, 1.756] | ±0.044 | ±0.032 |
+| λ₂ | 0.00905 | [0.00859, 0.01065] | [0.00883, 0.01037] | ±0.00099 | ±0.00073 |
+| β₂ | 0.00903 | [0.00723, 0.01067] | [0.00843, 0.00964] | ±0.00144 | ±0.00091 |
+| σ₂ | 1.326 | [1.242, 1.374] | [1.272, 1.349] | ±0.054 | ±0.053 |
+| **var₂** | **0.587** | **[0.571, 0.603]** | **[0.574, 0.599]** | **±0.020** | **±0.014** |
+| var total | 0.746 | [0.723, 0.765] | [0.731, 0.760] | ±0.025 | ±0.017 |
+| half-life z₁ | 0.156 yr | [0.155, 0.157] | [0.155, 0.157] | – | – |
+| **half-life z₂** | **9.6 yr** | **[8.1, 10.8]** | **[9.1, 9.9]** | **±1.1** | **±0.6** |
+| **chain 5×15, var(log e)** | **0.779** | **[0.754, 0.799]** | **[0.763, 0.792]** | **±0.028** | **±0.018** |
+| chain 5×15, z₂ | 0.613 | [0.595, 0.629] | [0.600, 0.625] | ±0.022 | ±0.015 |
+| chain 3×11 (KMV procedure), var(log e) | 0.890 | not bootstrapped | – | – | – |
+
+- The bootstrap and the sandwich agree. var₂ is pinned to ±2–3%.
+- The persistence of z₂ is less precise over years (8–11 yr) than over
+  residuals.
+- **None of these intervals covers v3 (var₂ 1.26, chain 1.51).** The two
+  methods give different numbers for the same data (§31.4–31.5); the
+  sampling uncertainty is an order of magnitude smaller than that gap.
+- The 6-parameter sandwich (β₁ free) gives nearly the same intervals for
+  var₂ (±0.020 / ±0.014) and the chain (±0.028 / ±0.018).
+- Not in the table: the 3 × 11 chain. Its procedure is a DFLS fit of grid
+  widths, about 1 min per chain, so it was not run for 400 reps.
+
+### 32.4 Profile of var₂ (task 3)
+
+`output/pol_v4/var2_profile/`:
+- var₂ is fixed at m × 0.587 via β₂ = ½(λ₂σ₂²/v − λ₂) (reset formula);
+- the other 5 parameters are re-estimated (DE 100 × 12 + NM 400, from the
+  canonical point);
+- OOS f at 400k.
+
+| m | var₂ reached | OOS f | β₁ | chain 5×15 |
+|---|---|---|---|---|
+| 0.60 | 0.352 | 0.0744 | 0.245 | 0.638 |
+| 0.70 | 0.411 | 0.0478 | 0.249 | 0.691 |
+| 0.80 | 0.470 | 0.0358 | 0.263 | 0.749 |
+| 0.90 | 0.529 | 0.0332 | 0.997 | 0.726 |
+| 0.95 | 0.558 | 0.0288 | 1.000 | 0.751 |
+| **1.00** | **0.587** | **0.0280** | 1.000 | 0.779 |
+| 1.05 | 0.617 | 0.0312 | 1.000 | 0.807 |
+| 1.10 | 0.646 | 0.0369 | 1.000 | 0.823 |
+| 1.25 | *0.590* | *0.0444* | 1.000 | 0.796 |
+| 1.50 | *0.590* | *0.0444* | 1.000 | 0.796 |
+
+- **The profile is valid only up to ×1.10.** Above that the target var₂ is
+  not reached. The implied β₂ falls to its lower bound (10⁻⁶), and the
+  optimizer instead lowers σ₂ so that var₂ = σ₂² stays at about 0.59. The
+  ×1.25 and ×1.5 rows are the same constrained point, not profile points.
+- Within ×0.9–×1.1 the minimum is sharp and at ×1.00: OOS f rises by 3%
+  at −5% and by 11% at +5%.
+- For m ≤ 0.8 the re-estimate switches to the second basin (β₁ ≈ 0.25,
+  §32.2). The chain is therefore not monotone at 0.8 → 0.9 (0.749 →
+  0.726).
+- The best of the lower basin on the profile (×0.8, OOS f 0.0358) is 28%
+  worse than the canonical point.
+
+### 32.5 Recovery test (task 4)
+
+`output/pol_v4/recovery/`:
+- 4 independent synthetic panels at the v4 parameters (generation seeds
+  101/202/303/404, 200k);
+- estimated with DE + NM + DFLS from KMV's `MakeGuess`, as in the
+  multistart.
+
+| seed | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ (true 0.587) |
+|---|---|---|---|---|---|---|---|
+| 101 | −1.6% | −2.4% | −1.3% | +3.9% | −2.9% | −1.7% | 0.593 |
+| 202 | +0.3% | −0.0% | −1.0% | +7.3% | −6.1% | −3.7% | 0.594 |
+| 303 | −31.8% | **−68.4% (β₁ 0.32)** | −13.2% | −74.5% | −23.0% | +42.4% | **0.508** |
+| 404 | −11.2% | −27.8% (β₁ 0.72) | −6.3% | −4.7% | −5.4% | −0.4% | 0.586 |
+
+- In 3 of 4 reps var₂ is recovered to within 1%, the z₂ parameters to
+  within 7%.
+- 303 is the second local minimum of §32.2. One start from one point
+  finds it on one panel in four. This is why the baseline uses 21 starts
+  and the OOS criterion.
+- 404 lands between the basins on β₁, without consequence for var₂.
+
+### 32.6 Discretization (task 5)
+
+Chains from the canonical estimate (`output/pol_v4/estimate/chain_ours_5x15/`,
+`chain_kmv_3x11/`):
+- (ii) our 5 × 15 (`km.our_chain_kmv_design`, scaled to the level target);
+- (i) KMV's 3 × 11 procedure (F3, `km.kmv_discretize`): DFLS of the two
+  grid parameters to the data targets; best of 4 attempts, f 0.140,
+  gridpars 0.683 / 0.314.
+
+The 8 moments of each chain are simulated in KMV's design (one
+cross-section, 4-year gap):
+
+| moment | target | 5 × 15 | 3 × 11 |
+|---|---|---|---|
+| var log y | 0.691 | 0.689 (−0.3%) | 0.781 (+13%) |
+| var Δ1 | 0.260 | 0.221 (−15%) | 0.250 (−3.6%) |
+| var Δ5 | 0.477 | 0.463 (−2.8%) | 0.524 (+10%) |
+| kurt Δ1 | 15.2 | 13.8 (−9.3%) | 11.2 (−26%) |
+| kurt Δ5 | 9.88 | 10.45 (+5.8%) | 9.68 (−2.0%) |
+| frac < 0.10 | 0.450 | 0.578 (+28%) | 0.653 (+45%) |
+| frac < 0.20 | 0.669 | 0.686 (+2.5%) | 0.670 (+0.1%) |
+| frac < 0.50 | 0.843 | 0.864 (+2.5%) | 0.789 (−6.4%) |
+| **ergodic var(log e)** | – | **0.779** (z₁ 0.166, z₂ 0.613) | **0.890** (z₁ 0.197, z₂ 0.693) |
+| autocorr. annual log y | – | 0.840 | 0.840 |
+| autocorr. log e, 1 q / 4 q | – | 0.843 / 0.735 | 0.838 / 0.727 |
+
+- The process itself has var total 0.746. The 5 × 15 chain is +4% above
+  it (level rescaling); the 3 × 11 chain is +19%.
+- The coarse 3-point grid for z₁ cannot hold the small-change mass (frac
+  < 0.10 +45%). KMV's procedure trades that for a higher level, as on
+  KMV's own targets (§31.2: 0.887 vs 0.771).
+
+### 32.7 Robustness variants (point estimate + chain)
+
+`output/pol_v4/robust/<variant>/`:
+- 3 starts each (MakeGuess + 2 Sobol), DE 100 × 12 + NM 400;
+- DFLS polish, except for nob1;
+- the same OOS rule.
+- **full5 has 2 starts.** The third was not run: the computer kept
+  powering off under load (§32.9), and the user decided to stop. The two
+  starts agree to 0.1% in f.
+
+| variant | starts | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ | hl₂ | f in | f OOS | f OOS, equal w. | chain 5×15 | chain 3×11 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **baseline** | 21 | 0.1121 | 0.99995 | 1.730 | 0.00905 | 0.00903 | 1.326 | **0.587** | 9.6 | 0.0248 | 0.0280 | 0.0417 | **0.779** | **0.890** |
+| (a) `full5`: true 5-yr change | 2 | 0.1087 | 0.9998 | 1.794 | 0.00745 | 0.00581 | 1.217 | **0.579** | 13.1 | 0.0231 | 0.0314 | 0.0453 | **0.782** | 0.933 |
+| (b) `nob1`: β₁ upper bound 4 | 3 | 0.1563 | **2.068** | 1.822 | 0.01227 | 0.00629 | 1.111 | **0.609** | 9.3 | 0.0112 | **0.0112** | 0.0168 | **0.782** | *1.373* |
+| (c) `eqw`: all weights 1 | 3 | 0.1046 | 0.9999 | 1.724 | 0.01098 | 0.00966 | 1.281 | **0.595** | 8.4 | 0.0321 | 0.0394 | 0.0394 | **0.775** | 0.865 |
+
+- **var₂ moves within 0.579–0.609 and the 5 × 15 chain within
+  0.775–0.782.** All variants lie inside, or at the edge of, the baseline's
+  bootstrap intervals.
+- **(a) full5.**
+  - With a true 5-year change var₂ barely changes (−1.4%), but z₂
+    persistence rises (hl₂ 13.1 vs 9.6 yr).
+  - The fit to the same targets is 12% worse out of sample (0.0314 vs
+    0.0280). The 4-yr gap is KMV's choice and also fits Poland better.
+- **(b) nob1.**
+  - Without the cap, β₁ = 2.07 (transitory half-life 0.07 yr) and the fit
+    is 2.5× better (OOS 0.0112 vs 0.0280). Mostly kurt Δ1 improves (−10.5%
+    vs −14.7%), and so does frac < 0.20.
+  - var₂ +4%, chain +0.4%.
+  - The KMV 3 × 11 procedure gives 1.37 here. With fast transitory decay
+    its 3-point z₁ grid fits the targets only by inflating the level. Our
+    5 × 15 is unaffected (0.782).
+  - The cap is KMV's box (E4) and stays in the baseline. The variant shows
+    it is not what drives var₂.
+- **(c) eqw.**
+  - Equal weights: var₂ +1.3%, hl₂ 8.4 yr.
+  - The second local minimum shows up again: start de03 has β₁ 0.24,
+    var₂ 0.491, in-sample f 0.0272 < 0.0321, but OOS f 0.0398 > 0.0394.
+  - The f values of (a) and (c) are not comparable with the baseline's
+    (different moment definition or weights). Only (b) uses the same
+    objective.
+
+### 32.8 Figures (task 6)
+
+`output/pol_v4/figures/` (`scripts/pol_v4_figures.py`), as in v3 (§28.1),
+with KMV's published chain for comparison:
+- `d1_distribution`: CDF of Δ1 with the GRID percentiles, log density,
+  tails;
+- `qq_vs_data`;
+- `impulse_response`: reset IRFs, plus the ACF of log e for the processes
+  and chains;
+- `var_changes`: variance of Δ1 and Δ5, model vs data (instead of variance
+  by age, which KMV's design does not have). It shows:
+  - GRID yearly var Δ1 / Δ5 with their trend;
+  - v4 model (4-yr gap and true 5-yr);
+  - the chains;
+  - v3;
+  - KMV's targets.
+- `ergodic_chain`;
+- the numbers behind them in `figure_stats.json`.
+
+### 32.9 Not done
+
+- **Nested V1–V3** (task 7) and **HANK steady state** (task 8):
+  - Code is ready and smoke-tested. `hank_step2/v4_steady_state.py`
+    reproduces the `swap_death` calibration; one steady state takes ≈ 40 s.
+    `pol_v4_uncertainty.py nested` covers the nested specs.
+  - Not run. The workstation powered off hard three times under sustained
+    load (Kernel-Power 41, bugcheck 0; at 12 and at 6 processes, once
+    during boot). The user stopped the computations after the variants.
+  - Before that, a Windows Update restart (03:42) interrupted the
+    pipeline once.
+- The third full5 start.
+- A bootstrap of the 3 × 11 chain.
+
+### 32.10 Comparison and conclusion
+
+| | var₂ | half-life z₂ | chain 5×15 | chain 3×11 (KMV procedure) |
+|---|---|---|---|---|
+| **Poland v4 (KMV method, this section)** | **0.587** [0.571, 0.603] | **9.6 yr** [8.1, 10.8] | **0.779** [0.754, 0.799] | **0.890** |
+| Poland, KMV method, §31.3 (same targets, other streams, 6 starts) | 0.573 | 10.0 yr | 0.772 | 0.879 |
+| KMV targets, KMV method (§31.2 / §31.5) | 0.611 | 9.4 yr | 0.771 | 0.887 |
+| KMV published chain (§29.9) | – | – | 0.846 (z₂ 0.647) | – |
+| Poland v3 (our method: additive, lifecycle) | 1.26 | 30.6 yr | 1.51 | – |
+
+(Intervals: bootstrap over years, recentred.)
+
+- **v4 reproduces §31.3** to within 2.5% (var₂ 0.587 vs 0.573, chains
+  0.779 / 0.890 vs 0.772 / 0.879), with 21 starts instead of 6 and new
+  random streams. The §31.5 conclusion therefore stands with a proper
+  uncertainty statement.
+- **Poland vs KMV under the same method:**
+  - var₂ 0.587 vs 0.611 (0.96×). KMV's value is just outside the
+    years-bootstrap interval, on the upper side.
+  - Chain 5 × 15: 0.779 vs 0.771 (1.01×), inside the interval.
+  - KMV procedure 3 × 11: 0.890 vs 0.887 (1.00×).
+  - Half-life 9.6 vs 9.4 yr.
+  - So the long-run income risk of Poland and the US is the same within
+    sampling error.
+- Against KMV's published chain (0.846), Poland's 5 × 15 is 0.92× and its
+  3 × 11 is 1.05×. That pairing mixes procedures (§31.2), so it is not
+  like for like.
+- The robustness variants move var₂ by 0.579–0.609 and the chain by
+  0.775–0.782 (5 × 15). The KMV-method answer does not depend on the 4-year
+  gap, on the β₁ cap, or on the weights.
+- The one fragile point is the second local minimum (var₂ 0.50, hl₂ 20 yr).
+  It is rejected out of sample (OOS f +13%), not by the in-sample
+  objective.
+- **For step 2:** `output/pol_v4/estimate/chain_ours_5x15/` (0.779) and
+  `chain_kmv_3x11/` (0.890) are the v4 chains. The one-asset calibration
+  on them (§24.6 reopened) is not run.
+
+---
+
 ## Open decisions (not yet settled)
 
+- **Poland v4 (§32, 2026-11-13): open points.** (i) The second local minimum
+  (β₁ ≈ 0.25, var₂ 0.50, hl₂ 20 yr) has a lower in-sample f and is
+  rejected only out of sample. Supervisor: is the OOS rule acceptable as
+  the selection criterion? (ii) β₁ sits at KMV's cap; without it the fit is
+  2.5× better and var₂ +4%. Keep the cap (KMV's box) or report `nob1`?
+  (iii) Not run: nested V1–V3, HANK steady state on the v4 chains, a
+  bootstrap of the 3 × 11 chain, the third full5 start (the workstation
+  powers off under sustained load).
 - **Poland vs KMV: which like-for-like comparison (§31.5, 2026-11-11).** With
   the same method on both sides Poland's persistent risk is about 1.2× KMV's
   (our method: var₂ 1.26 vs 1.03, chain 1.51 vs 1.25) or 1.0× (KMV's method:
@@ -4674,7 +5089,8 @@ sides are computed with exactly the same method.**
 - ~~**Chain size for step 2:** 75 states is the current default; may need to drop
   to 33 if the model solve is too slow.~~ **Settled (§28.3):** 5×15 solves in
   ≈ 1.1 s; keep it.
-- **Jump specification: additive (ours, 2016 WP) vs reset (KMV AER, KMV
+- **[Superseded 2026-11-13: v4 (§32) makes reset the baseline; v3 additive is
+  robustness.]** **Jump specification: additive (ours, 2016 WP) vs reset (KMV AER, KMV
   code) — §29.5, updated 2026-11-09 (§29.7–29.8).** The package confirms
   reset in KMV's code. Our baseline stays additive (working-paper
   specification). The reset robustness run leaves the dispersion conclusion

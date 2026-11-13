@@ -1,0 +1,18 @@
+{
+  "var_log_earns": 0.6911881021120648,
+  "var_d1": 0.2595273473993098,
+  "var_d5": 0.47653114888831416,
+  "kurt_d1": 15.239547634124756,
+  "kurt_d5": 9.877752840518951,
+  "frac_d1_lt_10": 0.449911847654758,
+  "frac_d1_lt_20": 0.669363857217435,
+  "frac_d1_lt_50": 0.8430527542358931,
+  "_meta": {
+    "version": "v4 (DECISIONS Sec 32)",
+    "source": "numerically identical to targets/pol_grid_v3.json (Sec 26.1)",
+    "level": "mean 2000-2020 of GRID std_resid^2 (POL, men 25-55): residualized annual log earnings",
+    "changes": "GRID residualized 1-yr / 5-yr changes, ages 25-55, window means",
+    "trend": "each target = its linear trend at the window midpoint (OLS identity, Sec 26.3); the trend is removed only in the detrended bootstrap / Omega_data",
+    "model_side": "KMV design: one ergodic cross-section, model 'd5' over a 4-year gap"
+  }
+}
