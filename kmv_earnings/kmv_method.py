@@ -263,20 +263,23 @@ def dfls(resid, x0: np.ndarray, rhobeg: float = 5.0, rhoend: float = 1e-4,
 
 # ----------------------------------------------------- KMV's estimation ------
 
-def _to_x(p: dict, order=KMV_PARAM_ORDER) -> np.ndarray:
-    return np.array([logit(p[k] / KMV_UPPER[k]) for k in order])
+def _to_x(p: dict, order=KMV_PARAM_ORDER, upper: dict | None = None) -> np.ndarray:
+    u = KMV_UPPER if upper is None else upper
+    return np.array([logit(p[k] / u[k]) for k in order])
 
 
-def _to_p(x: np.ndarray, order=KMV_PARAM_ORDER) -> dict:
-    return {k: float(KMV_UPPER[k] * expit(v)) for k, v in zip(order, x)}
+def _to_p(x: np.ndarray, order=KMV_PARAM_ORDER, upper: dict | None = None) -> dict:
+    u = KMV_UPPER if upper is None else upper
+    return {k: float(u[k] * expit(v)) for k, v in zip(order, x)}
 
 
 class KMVResiduals:
     """sqrt(w_m) * (model_m / target_m - 1), E/dfovec.f90 l. 126-185 (picklable)."""
 
     def __init__(self, targets: dict, sim_kwargs: dict | None = None,
-                 weights: dict | None = None):
+                 weights: dict | None = None, upper: dict | None = None):
         self.t = dict(targets)
+        self.upper = upper
         self.sim = dict(KMV_SIM if sim_kwargs is None else sim_kwargs)
         self.w = KMV_WEIGHTS if weights is None else weights
 
@@ -284,25 +287,30 @@ class KMVResiduals:
         return model_moments(p, **self.sim)
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
-        m = self.moments(_to_p(x))
+        m = self.moments(_to_p(x, upper=self.upper))
         return np.array([np.sqrt(self.w[k]) * (m[k] / self.t[k] - 1.0) for k in MOMENT_ORDER])
 
 
 def estimate_dfls(targets: dict, sim_kwargs: dict | None = None,
                   weights: dict | None = None, guess: dict | None = None,
                   ndfls: int = 3, rhobeg: float = 5.0, rhoend: float = 1e-4,
-                  maxfun: int | None = None, keep_log: bool = False):
+                  maxfun: int | None = None, keep_log: bool = False,
+                  upper: dict | None = None):
     """KMV's estimation (E/Estimation.f90 l. 98-114): ndfls sequential DFLS
     attempts, each restarting from the previous end point, in logistic
-    coordinates. Returns (params, info)."""
-    res = KMVResiduals(targets, sim_kwargs, weights)
-    x = _to_x(guess or KMV_GUESS)
+    coordinates. Returns (params, info).
+
+    upper: the logistic box's upper bounds (default None = KMV_UPPER, KMV's
+    box with beta < 1; bit-identical to before). DECISIONS Sec 33 (v4_nob)
+    passes beta upper = 4, the Euler stability limit at 4 steps/quarter."""
+    res = KMVResiduals(targets, sim_kwargs, weights, upper=upper)
+    x = _to_x(guess or KMV_GUESS, upper=upper)
     log = [] if keep_log else None
     attempts = []
     for j in range(ndfls):
         x, f, nf = dfls(res, x, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxfun, log=log)
-        attempts.append({"attempt": j + 1, "f": f, "n_evals": nf, "params": _to_p(x)})
-    p = _to_p(x)
+        attempts.append({"attempt": j + 1, "f": f, "n_evals": nf, "params": _to_p(x, upper=upper)})
+    p = _to_p(x, upper=upper)
     info = {"f": attempts[-1]["f"], "attempts": attempts,
             "n_evals": int(sum(a["n_evals"] for a in attempts))}
     if keep_log:

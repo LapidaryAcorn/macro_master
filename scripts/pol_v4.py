@@ -21,6 +21,16 @@ point i of the box, log scale), then the bounded Nelder-Mead polish of
 estimate() and a DFLS polish (KMV's optimizer, rhobeg 1, 2 restarts; not for
 nob1, whose box is not KMV's logistic box). The lower in-sample f is kept.
 
+Sec 33 (v4_nob): v4 without beta <= 1. beta1, beta2 up to 4/quarter (Euler
+stability at 4 steps/quarter, beta*dt < 1); lambda, sigma <= 2 as in KMV's box.
+  nob       Poland (targets/pol_grid_v4.json)         -> output/pol_v4_nob/pl
+  kmv_nob   KMV's targets (km.KMV_TARGETS, Sec 31.2)  -> output/pol_v4_nob/kmv
+  budget: DE 100 x 12 + NM 400 + 2 DFLS (logistic box with beta upper 4).
+  suffix _full: the Sec 32.2 budget (DE 200 x 15 + NM 800 + 2 DFLS), same x0/seed
+                (budget validation)                   -> .../<side>_full
+  suffix _e8:   8 steps/quarter, beta upper 8; run automatically for a start
+                whose beta exceeds 3.6 at 4 steps/quarter -> .../<side>_e8
+
 Usage:
   python scripts/pol_v4.py targets
   python scripts/pol_v4.py start --variant base --ids 1,2,3 --workers 4
@@ -54,9 +64,36 @@ BASE_SIM = dict(n_workers=200_000, n_years_keep=5, steps_per_quarter=4, lifecycl
                 burn_in_years=25, reset_jumps=True, kmv_euler=True, cross_section=True,
                 d5_gap=4, exact_reset_burn=True, chunk_workers=CHUNK, seed=1234)
 VARIANTS = ["base", "full5", "nob1", "eqw"]
+NOB_VARIANTS = ["nob", "kmv_nob"]
+ROOT_NOB = "output/pol_v4_nob"
+EULER_FLAG = 3.6          # beta above this at 4 steps/quarter -> rerun at 8 (Sec 33)
+
+
+def config_nob(variant: str) -> dict:
+    """Sec 33: nob / kmv_nob, optional suffixes _full (Sec 32.2 budget) and _e8."""
+    side = "kmv_nob" if variant.startswith("kmv_nob") else "nob"
+    suffix = variant[len(side):]
+    assert suffix in ("", "_full", "_e8", "_full_e8"), variant
+    spq = 8 if suffix.endswith("_e8") else 4
+    sim = dict(BASE_SIM, steps_per_quarter=spq)
+    bupper = float(spq)                       # beta*dt < 1, dt = 1/spq quarters
+    bounds = dict(km.KMV_BOUNDS)
+    bounds["beta1"] = (bounds["beta1"][0], bupper)
+    bounds["beta2"] = (bounds["beta2"][0], bupper)
+    oos = dict(sim, n_workers=400_000, seed=987654)
+    de_kw = (dict(maxiter=200, popsize=15, nm_maxiter=800) if "_full" in suffix
+             else dict(maxiter=100, popsize=12, nm_maxiter=400))
+    sub = ("pl" if side == "nob" else "kmv") + suffix
+    return dict(variant=variant, sim=sim, oos=oos, bounds=bounds, weights=dict(km.KMV_WEIGHTS),
+                out=os.path.join(ROOT_NOB, sub), de_kw=de_kw, dfls=True,
+                dfls_upper=dict(km.KMV_UPPER, beta1=bupper, beta2=bupper),
+                targets=(dict(km.KMV_TARGETS) if side == "kmv_nob" else None),
+                euler_check=(spq == 4))
 
 
 def config(variant: str) -> dict:
+    if variant.split("_")[0] == "nob" or variant.startswith("kmv_nob"):   # not "nob1"
+        return config_nob(variant)
     assert variant in VARIANTS, variant
     sim = dict(BASE_SIM)
     bounds = dict(km.KMV_BOUNDS)
@@ -73,6 +110,12 @@ def config(variant: str) -> dict:
              else dict(maxiter=100, popsize=12, nm_maxiter=400))
     return dict(variant=variant, sim=sim, oos=oos, bounds=bounds, weights=weights, out=out,
                 de_kw=de_kw, dfls=variant != "nob1")
+
+
+def cfg_targets(cfg):
+    """Targets of a config: KMV's for kmv_nob, else the v4 file."""
+    t = cfg.get("targets")
+    return {k: float(t[k]) for k in MOMENT_ORDER} if t else load_targets()
 
 
 def load_targets():
@@ -101,9 +144,11 @@ def sobol_start(i, bounds):
 
 
 def dfls_polish(p, targets, cfg):
-    guess = {k: min(max(p[k], 1e-6), 0.999 * km.KMV_UPPER[k]) for k in PARAM_ORDER}
+    up = cfg.get("dfls_upper") or km.KMV_UPPER
+    guess = {k: min(max(p[k], 1e-6), 0.999 * up[k]) for k in PARAM_ORDER}
     q, info = km.estimate_dfls(targets, sim_kwargs=cfg["sim"], guess=guess,
-                               weights=cfg["weights"], ndfls=2, rhobeg=1.0)
+                               weights=cfg["weights"], ndfls=2, rhobeg=1.0,
+                               upper=cfg.get("dfls_upper"))
     return q, info
 
 
@@ -132,7 +177,7 @@ def run_start(i, cfg, workers):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path + ".running", "w").write(str(os.getpid()))
     try:
-        targets = load_targets()
+        targets = cfg_targets(cfg)
         x0 = dict(km.KMV_GUESS) if i == 1 else sobol_start(i, cfg["bounds"])
         t0 = time.time()
         p, info = estimate_point(targets, cfg, x0, seed=1000 + i, workers=workers)
@@ -148,6 +193,14 @@ def run_start(i, cfg, workers):
               flush=True)
     finally:
         os.remove(path + ".running")
+    # Sec 33: a beta near the Euler limit -> same start again at 8 steps/quarter
+    if cfg.get("euler_check") and os.path.exists(path):
+        r = json.load(open(path))
+        bmax = max(r["params"]["beta1"], r["params"]["beta2"])
+        if bmax > EULER_FLAG:
+            print(f"EULER_FLAG [{cfg['variant']}/de{i}] beta={bmax:.3f} > {EULER_FLAG}: "
+                  f"rerun at 8 steps/quarter", flush=True)
+            run_start(i, config(cfg["variant"] + "_e8"), workers)
 
 
 # ------------------------------------------------------------------ chains --
@@ -194,9 +247,16 @@ def build_chains(p, targets, cfg, outdir, kmv3x11=True):
 
 
 def finalize(cfg):
-    targets = load_targets()
+    targets = cfg_targets(cfg)
     rd = os.path.join(cfg["out"], "runs")
     runs = [json.load(open(os.path.join(rd, f))) for f in sorted(os.listdir(rd)) if f.endswith(".json")]
+    if cfg.get("euler_check"):            # Sec 33: an _e8 rerun replaces its start
+        rd8 = os.path.join(config(cfg["variant"] + "_e8")["out"], "runs")
+        if os.path.isdir(rd8):
+            e8 = {f[:-5]: json.load(open(os.path.join(rd8, f))) for f in os.listdir(rd8) if f.endswith(".json")}
+            for r in e8.values():
+                r["euler_e8"] = True
+            runs = [e8.get(r["name"], r) for r in runs]
     runs.sort(key=lambda r: r["oos_f"])
     best = runs[0]
     p = best["params"]
@@ -226,7 +286,7 @@ def finalize(cfg):
            "n_within_5pct_of_best": int(sum(r["oos_f"] <= tol for r in runs)),
            "dist_within_5pct": {k: dist([get(r, k) for r in runs if r["oos_f"] <= tol]) for k in keys},
            "runs": [{k: r.get(k) for k in ("name", "x0", "params", "in_sample_f", "oos_f", "f_eq",
-                                            "derived", "wall_s", "f_after_nm", "f_after_dfls")}
+                                            "derived", "wall_s", "f_after_nm", "f_after_dfls", "euler_e8")}
                     for r in runs]}
     rep.update(build_chains(p, targets, cfg, cfg["out"]))
     for c in ("chain_ours_5x15", "chain_kmv_3x11"):
