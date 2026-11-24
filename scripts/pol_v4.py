@@ -36,7 +36,7 @@ stability at 4 steps/quarter, beta*dt < 1); lambda, sigma <= 2 as in KMV's box.
 Sec 33 P2 (pex): Poland, the continuous reset process with exact time
 aggregation (kmv_earnings/exact_sim.py, z2 held per quarter), parameters in
 continuous units (beta_c, lambda_c), beta_c up to 20 (technical bound only),
-lambda, sigma <= 2. Starts: 1 = KMV's MakeGuess converted to beta_c, lambda_c;
+sigma up to 3 (not KMV's 2), lambda <= 2. Starts: 1 = KMV's MakeGuess converted to beta_c, lambda_c;
 2 = A1's canonical de04 converted; 3-6 = Sobol points of the new box. Budget
 as A1 (DE 100 x 12 + NM 400 + 2 DFLS, logistic box beta up to 20).
                                                       -> output/pol_v4_nob/pl_exact
@@ -109,6 +109,7 @@ def to_cont(p):
 
 
 BETA_C_MAX = 20.0
+SIGMA_MAX_PEX = 3.0      # user, 2026-11-24: sigma up to 3, not KMV's 2
 
 
 def config_pex(variant: str) -> dict:
@@ -118,13 +119,16 @@ def config_pex(variant: str) -> dict:
     bounds = dict(km.KMV_BOUNDS)
     bounds["beta1"] = (bounds["beta1"][0], BETA_C_MAX)
     bounds["beta2"] = (bounds["beta2"][0], BETA_C_MAX)
+    bounds["sigma1"] = (bounds["sigma1"][0], SIGMA_MAX_PEX)
+    bounds["sigma2"] = (bounds["sigma2"][0], SIGMA_MAX_PEX)
     oos = dict(sim, n_workers=400_000, seed=987654)
     a1 = json.load(open(os.path.join(ROOT_NOB, "pl", "report.json")))["params"]
     x0 = {1: to_cont(km.KMV_GUESS), 2: to_cont(a1)}
     return dict(variant=variant, sim=sim, oos=oos, bounds=bounds, weights=dict(km.KMV_WEIGHTS),
                 out=os.path.join(ROOT_NOB, "pl_exact"),
                 de_kw=dict(maxiter=100, popsize=12, nm_maxiter=400), dfls=True,
-                dfls_upper=dict(km.KMV_UPPER, beta1=BETA_C_MAX, beta2=BETA_C_MAX),
+                dfls_upper=dict(km.KMV_UPPER, beta1=BETA_C_MAX, beta2=BETA_C_MAX,
+                                sigma1=SIGMA_MAX_PEX, sigma2=SIGMA_MAX_PEX),
                 targets=None, x0=x0)
 
 
