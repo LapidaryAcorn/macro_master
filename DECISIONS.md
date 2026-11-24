@@ -5256,6 +5256,33 @@ workers. All 8 moments, not only kurt Δ1:
   of var Δ1 appears with resets (P1).
 - **Implication, not acted on:** the v3 estimates (6 steps per quarter,
   §26) carry an aggregation error of this order in var Δ1 and var Δ5.
+
+### 33.9 P2: Poland with exact time aggregation (set up, not run yet)
+
+- Variant `pex` in `scripts/pol_v4.py`, output to
+  `output/pol_v4_nob/pl_exact`.
+- **Model and box:**
+  - exact simulator, M = 1;
+  - parameters β_c and λ_c;
+  - β_c ≤ 20 (a technical bound only); λ, σ ≤ 2.
+- **6 starts:**
+  - 1 = KMV's MakeGuess converted (β₁_c 0.769);
+  - 2 = A1's de04 converted (β₁_c 3.07);
+  - 3–6 = Sobol points of the new box.
+- **Budget** as A1: DE 100 × 12 + NM 400 + 2 DFLS (logistic box, β up
+  to 20). Canonical = the lowest OOS f (400k).
+- Smoke-tested on a tiny budget.
+- **Expected time:** ≈ 3.3 h per start on one process (7 500 × 1.6 s).
+  On 3 lanes that is 2 waves, ≈ 7 h.
+
+### 33.10 Still to do
+
+- P2 (§33.9).
+- Then, by the user's decision:
+  - KMV targets;
+  - a variant with a β cap;
+  - chains with β_c.
+- From the earlier plan:
   - the budget validation (2 best starts per side with `_full`);
   - A3: chains with β_c, and the analysis of 3 × 11 = 1.37;
   - A4: the comparison table;
