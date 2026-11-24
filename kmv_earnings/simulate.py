@@ -74,9 +74,16 @@ def simulate_log_annual_earnings(
     kmv_euler: bool = False,
     exact_reset_burn: bool = False,
     chunk_workers: int | None = None,
+    exact_integral: bool = False,
 ) -> np.ndarray:
     """
     Return log annual earnings, shape (n_workers, n_years_keep).
+
+    `exact_integral` (DECISIONS Sec 33): the continuous reset process with
+    exact time aggregation (kmv_earnings/exact_sim.py); params are then
+    continuous-time rates (beta_c, lambda_c) and steps_per_quarter is the
+    step on which z2 is held fixed. Needs reset_jumps, lifecycle=False.
+    Default False: unchanged, bit for bit.
 
     `kmv_euler`: the per-step rules of KMV's EarningsEstimation/Simulate.f90
     (l. 43, 49, 55, 61): a jump arrives with probability lambda*dt (not
@@ -122,6 +129,13 @@ def simulate_log_annual_earnings(
     12 processes (the 200k arrays do not fit in cache). Default None:
     unchanged, bit for bit.
     """
+    if exact_integral:
+        if not reset_jumps or lifecycle or deterministic_arrival:
+            raise ValueError("exact_integral needs reset_jumps, lifecycle=False, Poisson arrival")
+        from .exact_sim import simulate_exact
+        return simulate_exact(params, n_workers=n_workers, n_years_keep=n_years_keep,
+                              burn_in_years=burn_in_years, seed=seed,
+                              steps_per_quarter=steps_per_quarter, chunk_workers=chunk_workers)
     if chunk_workers is not None and n_workers > chunk_workers:
         kw = dict(n_years_keep=n_years_keep, steps_per_quarter=steps_per_quarter,
                   lifecycle=lifecycle, burn_in_years=burn_in_years,

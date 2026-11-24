@@ -5124,7 +5124,10 @@ random streams differ by K.
 
 - The error is roughly O(1/K): it halves with each doubling.
 - **The moments stabilize (< 1% between doublings) at K = 128 for the v4
-  baseline and at K = 256 for the β-free estimates.**
+  baseline and at K = 256 for the β-free estimates.** The doubling
+  criterion understates the remaining error, though: against the exact
+  integral (§33.8), K = 256 still has var Δ1 about 2% too high for de04 and
+  de06.
 - **The v4 baseline at 4 steps per quarter is far from convergence.** At
   K = 256:
 
@@ -5155,19 +5158,104 @@ random streams differ by K.
   - dt = 1/4 quarter.
 - The rule "β > 3.6 → 8 steps per quarter" is removed.
 
-### 33.7 Not done (waiting for the user)
+### 33.7 Cost of brute-force aggregation
 
-- **P2:** Poland, exact decay at K steps per quarter, no β cap, 3 starts
-  (MakeGuess + the 2 best A1 starts converted to β_c, λ_c). Measured cost
-  of one 200k evaluation on one process:
+One 200k evaluation of the brute-force simulator on one process:
 
-  | K / quarter | 4 | 32 | 128 | 256 |
-  |---|---|---|---|---|
-  | seconds per evaluation | 0.39 | 2.9 | 11.5 | 23 |
+| K / quarter | 4 | 32 | 128 | 256 |
+|---|---|---|---|---|
+| seconds per evaluation | 0.39 | 2.9 | 11.5 | 23 |
 
-  At the A1 budget (~7 500 evaluations per start) that is ≈ 24 h per start
-  at K = 128 and ≈ 48 h at K = 256.
-- Still to do:
+At the A1 budget (~7 500 evaluations per start) that is ≈ 24 h per start
+at K = 128 and ≈ 48 h at K = 256. The user chose an exact integration
+instead (§33.8).
+
+### 33.8 Exact time aggregation: simulator and validation
+
+**Simulator.** `kmv_earnings/exact_sim.py`, reached through
+`simulate_log_annual_earnings(exact_integral=True)` (default False:
+unchanged). Parameters are in continuous units (β_c, λ_c per quarter).
+- **z₁ is integrated exactly.** On a segment of length T with start value
+  a, ∫₀ᵀ exp(a·e^(−βt)) dt = [Ei(a) − Ei(a·e^(−βT))]/β, with special
+  branches for |a| or |a·e^(−βT)| < 1e-8.
+- **Jumps of both components are placed at their exact times** inside each
+  step, so the year is split exactly at every arrival:
+  - the Poisson count comes from inversion, capped at 3 per component and
+    step;
+  - arrival times are uniform slots.
+- **z₂ is held at its value within a step of 1/M quarter**; its decay is
+  applied at the end of the step (β₂·h ≈ 0.007).
+- **Common random numbers:** every worker draws the same fixed block per
+  step whatever the parameters.
+- **Burn-in:** the exact law of the state after the 25-year burn-in.
+- **Cost:** 1.6 s per 200k evaluation at M = 1 and 4.1 s at M = 4,
+  against 0.39 s for Euler 4/q.
+- **Tests:** `tests/test_exact_sim.py` (3 tests: integral vs quadrature,
+  mean annual flow vs the analytic value, routing and determinism); the
+  `tests/` suite (33 tests) passes.
+
+**Validation** (`scripts/nob_exact_validate.py` writes
+`output/pol_v4_nob/exact_validation.json`). 400k workers, seed 987654,
+compared with P1 at K = 256. Relative differences in %:
+
+| set | version | var y | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | <0.1 | <0.2 | <0.5 |
+|---|---|---|---|---|---|---|---|---|---|
+| base | exact M = 1 | +0.6 | −0.6 | +0.1 | +0.5 | +1.1 | +0.2 | +0.1 | 0.0 |
+| base | exact M = 4 | +0.2 | −0.5 | −0.2 | −0.9 | +0.2 | −0.1 | −0.1 | +0.1 |
+| base | seed noise (M = 1, seed 555 vs 987654) | −0.3 | 0.0 | −0.7 | +0.6 | −1.2 | +0.3 | +0.1 | 0.0 |
+| de04 | exact M = 1 | +0.4 | −1.8 | −0.9 | +1.4 | +0.8 | +0.3 | +0.1 | +0.1 |
+| de04 | exact M = 4 | −0.1 | −1.5 | −1.1 | +1.4 | +0.9 | +0.4 | +0.3 | +0.2 |
+| de04 | seed noise | −0.2 | −0.3 | −0.4 | +2.0 | +0.2 | +0.3 | +0.2 | +0.1 |
+| de06 | exact M = 1 | +0.5 | −1.8 | −1.0 | +2.2 | +0.8 | +0.2 | +0.1 | +0.1 |
+| de06 | exact M = 4 | 0.0 | −1.0 | −0.6 | +1.2 | +1.0 | +0.2 | +0.3 | +0.1 |
+| de06 | seed noise | −0.4 | 0.0 | −0.3 | +0.9 | 0.0 | +0.2 | +0.2 | +0.1 |
+
+- **For the baseline**, all non-kurtosis moments agree within 0.6%.
+- **For de04 and de06**, var Δ1 is 1.8% below P1 for both seeds, which is
+  above the seed noise (0.3%).
+- **The discrepancy is on P1's side.** A z₁-only check (σ₂ → 0, de04,
+  200k workers) shows this:
+
+  | simulator | mean annual flow | var Δ1 |
+  |---|---|---|
+  | analytic | 4.282 | – |
+  | exact | 4.281 | 0.0683 |
+  | brute force K = 64 | 4.302 | 0.0732 |
+  | brute force K = 256 | 4.289 | 0.0696 |
+  | brute force K = 1024 | 4.281 | 0.0677 |
+
+  So the exact integral is the limit, and brute force at K = 256 still has
+  about 2% upward bias in var Δ1 when β_c ≈ 3.
+- **Holding z₂ per quarter (M = 1) instead of per 1/4 quarter (M = 4)**
+  raises var y by 0.4–0.6% in all three sets (slightly above the noise).
+  Every other non-kurtosis difference stays within noise. Accepted: M = 1,
+  so the error is < 1%.
+
+**Reconciliation with §3** ("converged by 6 steps per quarter").
+`output/pol_v4_nob/sec3_reconcile.json` repeats the §3 design: KMV Table 3
+parameters (β₁ 0.761), additive jumps, lifecycle, exact decay, 50k
+workers. All 8 moments, not only kurt Δ1:
+
+| K / quarter | var y | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | <0.1 | <0.2 | <0.5 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 0.779 | 0.391 | 0.683 | 12.34 | 9.29 | 0.516 | 0.610 | 0.782 |
+| 3 | 0.707 | 0.256 | 0.536 | 14.21 | 10.53 | 0.540 | 0.650 | 0.829 |
+| 6 | 0.688 | 0.228 | 0.503 | 14.55 | 10.88 | 0.547 | 0.659 | 0.840 |
+| 13 | 0.682 | 0.213 | 0.485 | 14.79 | 11.05 | 0.551 | 0.664 | 0.846 |
+| 64 | 0.680 | 0.206 | 0.478 | 15.03 | 11.10 | 0.552 | 0.667 | 0.849 |
+| 256 | 0.677 | 0.204 | 0.473 | 15.12 | 11.33 | 0.554 | 0.668 | 0.851 |
+
+- **§3 looked only at kurt Δ1.** It was also noisy: one seed and a small
+  panel, with 14.6 / 14.7 at 6 / 13 steps. Kurt Δ1 at 6 steps is indeed
+  within 4% of K = 256.
+- **The variances were not converged at 6 steps:** var Δ1 is +12% and
+  var Δ5 +6.5% above K = 256.
+- **Parameters matter too:** β₁ = 0.761 there, against β₁_c 1.15 (v4) and
+  3.07 (de04) here. A faster z₁ needs a finer step.
+- **Additive vs reset jumps is not the reason.** The same slow convergence
+  of var Δ1 appears with resets (P1).
+- **Implication, not acted on:** the v3 estimates (6 steps per quarter,
+  §26) carry an aggregation error of this order in var Δ1 and var Δ5.
   - the budget validation (2 best starts per side with `_full`);
   - A3: chains with β_c, and the analysis of 3 × 11 = 1.37;
   - A4: the comparison table;
@@ -5180,9 +5268,8 @@ random streams differ by K.
 - **v4_nob (§33, 2026-11-24): the time aggregation.** The Euler-4/q
   estimate is an exact discrete model (16 points per year), not a continuous
   process: its continuous equivalent (β_c, λ_c) converges only at 128–256
-  steps per quarter, with a much worse fit. Open: run P2 (estimation at a
-  converged K, ~24–48 h per start) or a cheaper exact integration, before
-  A3/A4.
+  steps per quarter, with a much worse fit. Chosen: exact integration (Ei,
+  §33.8, validated); P2 (§33.9) is set up and waits for the go-ahead.
 - **Poland v4 (§32, 2026-11-13): open points.** (i) The second local minimum
   (β₁ ≈ 0.25, var₂ 0.50, hl₂ 20 yr) has a lower in-sample f and is
   rejected only out of sample. Supervisor: is the OOS rule acceptable as

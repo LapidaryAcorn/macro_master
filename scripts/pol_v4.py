@@ -33,6 +33,14 @@ stability at 4 steps/quarter, beta*dt < 1); lambda, sigma <= 2 as in KMV's box.
   more accurate one; Euler at 4 steps/quarter is an exact discrete model whose
   continuous-time equivalent is beta_c = -ln(1 - beta dt)/dt, Sec 33)
 
+Sec 33 P2 (pex): Poland, the continuous reset process with exact time
+aggregation (kmv_earnings/exact_sim.py, z2 held per quarter), parameters in
+continuous units (beta_c, lambda_c), beta_c up to 20 (technical bound only),
+lambda, sigma <= 2. Starts: 1 = KMV's MakeGuess converted to beta_c, lambda_c;
+2 = A1's canonical de04 converted; 3-6 = Sobol points of the new box. Budget
+as A1 (DE 100 x 12 + NM 400 + 2 DFLS, logistic box beta up to 20).
+                                                      -> output/pol_v4_nob/pl_exact
+
 Usage:
   python scripts/pol_v4.py targets
   python scripts/pol_v4.py start --variant base --ids 1,2,3 --workers 4
@@ -91,7 +99,38 @@ def config_nob(variant: str) -> dict:
                 targets=(dict(km.KMV_TARGETS) if side == "kmv_nob" else None))
 
 
+def ceq(rate, dt=0.25):
+    """Continuous-time equivalent of an Euler rate at dt = 1/4 quarter (Sec 33.4)."""
+    return float(-np.log1p(-rate * dt) / dt)
+
+
+def to_cont(p):
+    return dict(p, **{k: ceq(p[k]) for k in ("lambda1", "beta1", "lambda2", "beta2")})
+
+
+BETA_C_MAX = 20.0
+
+
+def config_pex(variant: str) -> dict:
+    """Sec 33 P2: exact time aggregation, continuous units, Poland."""
+    assert variant == "pex", variant
+    sim = dict(BASE_SIM, kmv_euler=False, exact_integral=True, steps_per_quarter=1)
+    bounds = dict(km.KMV_BOUNDS)
+    bounds["beta1"] = (bounds["beta1"][0], BETA_C_MAX)
+    bounds["beta2"] = (bounds["beta2"][0], BETA_C_MAX)
+    oos = dict(sim, n_workers=400_000, seed=987654)
+    a1 = json.load(open(os.path.join(ROOT_NOB, "pl", "report.json")))["params"]
+    x0 = {1: to_cont(km.KMV_GUESS), 2: to_cont(a1)}
+    return dict(variant=variant, sim=sim, oos=oos, bounds=bounds, weights=dict(km.KMV_WEIGHTS),
+                out=os.path.join(ROOT_NOB, "pl_exact"),
+                de_kw=dict(maxiter=100, popsize=12, nm_maxiter=400), dfls=True,
+                dfls_upper=dict(km.KMV_UPPER, beta1=BETA_C_MAX, beta2=BETA_C_MAX),
+                targets=None, x0=x0)
+
+
 def config(variant: str) -> dict:
+    if variant == "pex":
+        return config_pex(variant)
     if variant.split("_")[0] == "nob" or variant.startswith("kmv_nob"):   # not "nob1"
         return config_nob(variant)
     assert variant in VARIANTS, variant
@@ -178,7 +217,10 @@ def run_start(i, cfg, workers):
     open(path + ".running", "w").write(str(os.getpid()))
     try:
         targets = cfg_targets(cfg)
-        x0 = dict(km.KMV_GUESS) if i == 1 else sobol_start(i, cfg["bounds"])
+        if "x0" in cfg:                     # Sec 33 P2: given starts, then Sobol
+            x0 = cfg["x0"].get(i) or sobol_start(i, cfg["bounds"])
+        else:
+            x0 = dict(km.KMV_GUESS) if i == 1 else sobol_start(i, cfg["bounds"])
         t0 = time.time()
         p, info = estimate_point(targets, cfg, x0, seed=1000 + i, workers=workers)
         f_in = f_obj(model_moments(p, **cfg["sim"]), targets, cfg["weights"])
