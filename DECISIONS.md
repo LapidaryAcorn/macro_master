@@ -4992,10 +4992,197 @@ with KMV's published chain for comparison:
   `chain_kmv_3x11/` (0.890) are the v4 chains. The one-asset calibration
   on them (§24.6 reopened) is not run.
 
+## 33. v4_nob: v4 without β ≤ 1, and what β means under Euler decay (2026-11-24)
+
+**Why.** The supervisor saw no justification for KMV's β ≤ 1 (§32.1, E4).
+v4_nob is v4 exactly, except that β₁ and β₂ are bounded only by Euler
+stability at 4 steps per quarter (β·dt < 1, i.e. β < 4). λ, σ ≤ 2 stay. Both
+sides: Poland (`targets/pol_grid_v4.json`) and KMV's targets (§31.2). v4
+files are not touched; outputs in `output/pol_v4_nob/`.
+
+### 33.1 Specification and budget
+
+- `scripts/pol_v4.py`, variants `nob` (Poland, `output/pol_v4_nob/pl`) and
+  `kmv_nob` (KMV targets, `output/pol_v4_nob/kmv`).
+- 12 starts per side: start 1 = KMV's `MakeGuess`, starts 2–12 = Sobol
+  points (seed 2026) in the log box with β up to 4.
+- User's choice (cheaper option, as `nob1` in §32.7): DE 100 × 12 +
+  NM 400 + 2 DFLS polishes, 3 lanes × 1 process (`scripts/run_v4_nob.sh`).
+  About 50 min per start, 3 h 20 min per side.
+- DFLS works in KMV's logistic box. New option `estimate_dfls(upper=…)`
+  sets its upper ends (here β = 4). The default is bit-identical to before
+  (`tests/test_dfls_upper.py`, 3 tests; full suite of 30 passes).
+- Canonical = the lowest out-of-sample f (400k, seed 987654), as in §32.2.
+- `_full` suffix: the §32.2 budget (DE 200 × 15 + NM 800), same x0 and seed,
+  for the budget validation (not run, §33.7).
+- **Removed rule.** The brief's "β > 3.6 → repeat the start at 8 steps per
+  quarter" was implemented and then removed (§33.4): with the same β,
+  8 steps per quarter is a different process, not a more accurate one. No
+  start reached β > 3.6 on either side, so nothing was rerun.
+
+### 33.2 A1: Poland (commit ce545cb)
+
+| start | f in | f OOS | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ | hl₂ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **de04 (canonical)** | 0.01115 | **0.01107** | 0.1605 | 2.143 | 1.820 | 0.01226 | 0.00646 | 1.117 | **0.607** | 9.26 |
+| other 10 of the main basin | 0.0111–0.0117 | 0.0111–0.0121 | 0.148–0.161 | 1.99–2.17 | 1.82–1.86 | 0.0123 | 0.0055–0.0065 | 1.07–1.12 | 0.601–0.610 | 9.2–9.8 |
+| de11 | 0.0270 | 0.0369 | 0.0821 | 0.388 | 1.454 | 0.00554 | 0.0101 | 1.601 | 0.550 | 11.1 |
+
+- 11 of 12 starts land in one basin. There β₁ ≈ 2.1 (in Euler units),
+  var₂ 0.607 (v4: 0.587, +3.4%) and hl₂ 9.3 yr (v4: 9.6). The basin is
+  §32.7 `nob1` (β₁ 2.07, var₂ 0.609).
+- f OOS 0.0111 vs 0.0280 in v4: 2.5× better.
+- **The second minimum of v4 (β₁ ≈ 0.26, rare z₂ shocks) does not appear.**
+  The closest start, de11 (β₁ 0.39, hl₂ 11 yr), is worse both in sample
+  and out of sample (OOS f 3.3× the canonical one).
+
+### 33.3 A2: KMV's targets (commit ba3d54e)
+
+| start | f in | f OOS | λ₁ | β₁ | σ₁ | λ₂ | β₂ | σ₂ | var₂ | hl₂ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **de06 (canonical)** | 0.00164 | **0.00283** | 0.1182 | 2.034 | 1.865 | 0.01105 | 0.00742 | 1.216 | **0.631** | 9.38 |
+| other 9 of the main basin | 0.0016–0.0017 | 0.0029–0.0031 | 0.1175–0.1183 | 2.03–2.06 | 1.86–1.87 | 0.0111 | 0.0072–0.0075 | 1.20–1.22 | 0.631–0.632 | 9.35–9.44 |
+| de05 (second minimum) | 0.00884 | 0.01089 | 0.0512 | 0.270 | 1.642 | 0.00175 | 0.00575 | 1.987 | 0.520 | 23.1 |
+| de07 | 0.0368 | 0.0378 | 0.0425 | 0.293 | 1.936 | 0.00255 | 6.7e-6 | 0.706 | 0.496 | 67.9 |
+
+- 10 of 12 starts land in one basin. var₂ 0.631 vs 0.611 in the KMV-method
+  baseline (§31.2), +3.3%: the same shift as for Poland.
+- Here the second minimum does appear (de05). Without the β cap it is
+  worse in sample too (f 5.4×).
+- Chains from finalize, with β taken as a continuous-time rate (see §33.4;
+  to be redone in A3):
+
+  | | 5 × 15 | 3 × 11 | of which z₁ in 3 × 11 |
+  |---|---|---|---|
+  | Poland | 0.780 | 1.368 | 0.67 |
+  | KMV targets | 0.776 | 1.440 | 0.70 |
+
+  In both, the 3 × 11 excess sits in z₁.
+
+### 33.4 Finding: under Euler decay β is not the continuous-time rate
+
+`scripts/nob_euler_check.py` writes `output/pol_v4_nob/pl/euler_check.json`:
+de04 re-simulated at 400k, seed 987654.
+
+| version | f | var y | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | <0.1 | <0.2 | <0.5 |
+|---|---|---|---|---|---|---|---|---|---|
+| target | – | 0.691 | 0.260 | 0.477 | 15.24 | 9.88 | 0.450 | 0.669 | 0.843 |
+| Euler 4/q (estimation) | 0.0111 | 0.697 | 0.255 | 0.484 | 13.59 | 9.95 | 0.479 | 0.658 | 0.834 |
+| Euler 8/q, same β | 0.0649 | 0.671 | 0.204 | 0.438 | 14.26 | 10.54 | 0.486 | 0.666 | 0.855 |
+| Euler 16/q, same β | 0.1263 | 0.661 | 0.181 | 0.412 | 14.65 | 10.91 | 0.489 | 0.670 | 0.865 |
+| exp(−β dt), same β, Euler arrival | 0.0534 | 0.714 | 0.284 | 0.518 | 12.04 | 9.25 | 0.436 | 0.602 | 0.814 |
+| fully exact, same β | 0.0434 | 0.712 | 0.279 | 0.514 | 12.24 | 9.34 | 0.442 | 0.607 | 0.817 |
+| exp with β_c, λ_c, 4/q | 0.0111 | identical to Euler 4/q | | | | | | | |
+
+- With resets, Euler decay (1 − β dt) per step is just geometric decay. So
+  Euler at 4 steps per quarter is **exactly** the continuous-decay process
+  sampled at the same steps, with β_c = −ln(1 − β dt)/dt and λ_c =
+  −ln(1 − λ dt)/dt, dt = 1/4 quarter (last row: identical moments).
+  - de04: β₁ 2.143 → β₁_c 3.07; λ₁ 0.1605 → 0.164. β₂ and λ₂ change by
+    less than 0.1%.
+  - v4 baseline: β₁ = 1 (the cap) → β₁_c 1.15.
+  - The Euler bound β < 4 corresponds to an unbounded β_c.
+- Both chain constructions build a continuous-time generator Q from
+  (λ, β, σ) and take P = expm(Q):
+  - `discretize_process` for 5 × 15;
+  - `kmv_chain_from_grid_params` (`kmv_method.py:429`) for 3 × 11.
+
+  They must therefore be given β_c and λ_c, not the Euler β. This applies
+  to v4 as well: the §32.6 chains used β₁ = 1, not 1.15.
+
+### 33.5 Pilot P1: convergence of the time aggregation
+
+`scripts/nob_p1_aggregation.py` writes `output/pol_v4_nob/p1_aggregation.json`.
+- The continuous process (β_c, λ_c, exact decay, Poisson arrival) is
+  simulated at K steps per quarter, 400k workers, seed 987654.
+- Three parameter sets: the v4 baseline, de04 (A1) and de06 (A2).
+- One process; 4.5 min in total.
+
+f and var Δ1 by K:
+
+| K / quarter | base f | base var Δ1 | de04 f | de04 var Δ1 | de06 f | de06 var Δ1 |
+|---|---|---|---|---|---|---|
+| 4 | 0.028 | 0.250 | 0.011 | 0.255 | 0.003 | 0.225 |
+| 8 | 0.051 | 0.221 | 0.129 | 0.186 | 0.095 | 0.171 |
+| 16 | 0.092 | 0.203 | 0.286 | 0.154 | 0.222 | 0.145 |
+| 32 | 0.109 | 0.196 | 0.392 | 0.140 | 0.317 | 0.132 |
+| 64 | 0.121 | 0.192 | 0.458 | 0.133 | 0.385 | 0.127 |
+| 128 | 0.125 | 0.192 | 0.472 | 0.130 | 0.380 | 0.125 |
+| 256 | 0.123 | 0.192 | 0.471 | 0.130 | 0.379 | 0.125 |
+
+Largest relative change from the previous K, kurtoses excluded. The
+kurtoses move 1–4% between K at 400k, mostly Monte Carlo noise, because the
+random streams differ by K.
+
+| step | base | de04 | de06 |
+|---|---|---|---|
+| 4 → 8 | 11.5% | 26.8% | 23.8% |
+| 16 → 32 | 3.3% | 9.2% | 8.5% |
+| 32 → 64 | 1.8% | 4.4% | 4.1% |
+| 64 → 128 | **0.85%** | 2.6% | 1.7% |
+| 128 → 256 | 0.28% | **0.64%** | **0.54%** |
+
+- The error is roughly O(1/K): it halves with each doubling.
+- **The moments stabilize (< 1% between doublings) at K = 128 for the v4
+  baseline and at K = 256 for the β-free estimates.**
+- **The v4 baseline at 4 steps per quarter is far from convergence.** At
+  K = 256:
+
+  | moment | change vs 4/q |
+  |---|---|
+  | var Δ1 | 0.192 instead of 0.250 (−23%) |
+  | var Δ5 | −13% |
+  | kurt Δ1 | +16% |
+  | f | 0.123 instead of 0.028 |
+
+- For de04 and de06 the gap is larger: var Δ1 −49% and −44%. z₁ dies
+  within about one 4/q step, so its contribution to annual income depends
+  on how many points the year is summed from.
+
+### 33.6 Conclusion (settled)
+
+- **The Euler-4/q estimate is an exact discrete model:** a jump-reset
+  process observed at 16 points per year, the year's income being their
+  sum.
+  - It is not an approximation of a continuous process whose limit would
+    have the same moments. In particular it is not the continuous process
+    with β_c: at fine aggregation that process fits much worse.
+  - The same holds for KMV's own design (§31.1 A2–A4).
+- **Chains for HANK are always built with β_c and λ_c**, because both chain
+  constructions treat β as a continuous-time rate:
+  - β_c = −ln(1 − β dt)/dt;
+  - λ_c = −ln(1 − λ dt)/dt;
+  - dt = 1/4 quarter.
+- The rule "β > 3.6 → 8 steps per quarter" is removed.
+
+### 33.7 Not done (waiting for the user)
+
+- **P2:** Poland, exact decay at K steps per quarter, no β cap, 3 starts
+  (MakeGuess + the 2 best A1 starts converted to β_c, λ_c). Measured cost
+  of one 200k evaluation on one process:
+
+  | K / quarter | 4 | 32 | 128 | 256 |
+  |---|---|---|---|---|
+  | seconds per evaluation | 0.39 | 2.9 | 11.5 | 23 |
+
+  At the A1 budget (~7 500 evaluations per start) that is ≈ 24 h per start
+  at K = 128 and ≈ 48 h at K = 256.
+- Still to do:
+  - the budget validation (2 best starts per side with `_full`);
+  - A3: chains with β_c, and the analysis of 3 × 11 = 1.37;
+  - A4: the comparison table;
+  - stage B.
+
 ---
 
 ## Open decisions (not yet settled)
 
+- **v4_nob (§33, 2026-11-24): the time aggregation.** The Euler-4/q
+  estimate is an exact discrete model (16 points per year), not a continuous
+  process: its continuous equivalent (β_c, λ_c) converges only at 128–256
+  steps per quarter, with a much worse fit. Open: run P2 (estimation at a
+  converged K, ~24–48 h per start) or a cheaper exact integration, before
+  A3/A4.
 - **Poland v4 (§32, 2026-11-13): open points.** (i) The second local minimum
   (β₁ ≈ 0.25, var₂ 0.50, hl₂ 20 yr) has a lower in-sample f and is
   rejected only out of sample. Supervisor: is the OOS rule acceptable as

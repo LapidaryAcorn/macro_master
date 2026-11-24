@@ -28,8 +28,10 @@ stability at 4 steps/quarter, beta*dt < 1); lambda, sigma <= 2 as in KMV's box.
   budget: DE 100 x 12 + NM 400 + 2 DFLS (logistic box with beta upper 4).
   suffix _full: the Sec 32.2 budget (DE 200 x 15 + NM 800 + 2 DFLS), same x0/seed
                 (budget validation)                   -> .../<side>_full
-  suffix _e8:   8 steps/quarter, beta upper 8; run automatically for a start
-                whose beta exceeds 3.6 at 4 steps/quarter -> .../<side>_e8
+  (the earlier rule "beta > 3.6 -> rerun the start at 8 steps/quarter" is
+  removed: with the same beta, 8 steps/quarter is a different process, not a
+  more accurate one; Euler at 4 steps/quarter is an exact discrete model whose
+  continuous-time equivalent is beta_c = -ln(1 - beta dt)/dt, Sec 33)
 
 Usage:
   python scripts/pol_v4.py targets
@@ -66,15 +68,14 @@ BASE_SIM = dict(n_workers=200_000, n_years_keep=5, steps_per_quarter=4, lifecycl
 VARIANTS = ["base", "full5", "nob1", "eqw"]
 NOB_VARIANTS = ["nob", "kmv_nob"]
 ROOT_NOB = "output/pol_v4_nob"
-EULER_FLAG = 3.6          # beta above this at 4 steps/quarter -> rerun at 8 (Sec 33)
 
 
 def config_nob(variant: str) -> dict:
-    """Sec 33: nob / kmv_nob, optional suffixes _full (Sec 32.2 budget) and _e8."""
+    """Sec 33: nob / kmv_nob, optional suffix _full (Sec 32.2 budget)."""
     side = "kmv_nob" if variant.startswith("kmv_nob") else "nob"
     suffix = variant[len(side):]
-    assert suffix in ("", "_full", "_e8", "_full_e8"), variant
-    spq = 8 if suffix.endswith("_e8") else 4
+    assert suffix in ("", "_full"), variant
+    spq = 4
     sim = dict(BASE_SIM, steps_per_quarter=spq)
     bupper = float(spq)                       # beta*dt < 1, dt = 1/spq quarters
     bounds = dict(km.KMV_BOUNDS)
@@ -87,8 +88,7 @@ def config_nob(variant: str) -> dict:
     return dict(variant=variant, sim=sim, oos=oos, bounds=bounds, weights=dict(km.KMV_WEIGHTS),
                 out=os.path.join(ROOT_NOB, sub), de_kw=de_kw, dfls=True,
                 dfls_upper=dict(km.KMV_UPPER, beta1=bupper, beta2=bupper),
-                targets=(dict(km.KMV_TARGETS) if side == "kmv_nob" else None),
-                euler_check=(spq == 4))
+                targets=(dict(km.KMV_TARGETS) if side == "kmv_nob" else None))
 
 
 def config(variant: str) -> dict:
@@ -193,14 +193,6 @@ def run_start(i, cfg, workers):
               flush=True)
     finally:
         os.remove(path + ".running")
-    # Sec 33: a beta near the Euler limit -> same start again at 8 steps/quarter
-    if cfg.get("euler_check") and os.path.exists(path):
-        r = json.load(open(path))
-        bmax = max(r["params"]["beta1"], r["params"]["beta2"])
-        if bmax > EULER_FLAG:
-            print(f"EULER_FLAG [{cfg['variant']}/de{i}] beta={bmax:.3f} > {EULER_FLAG}: "
-                  f"rerun at 8 steps/quarter", flush=True)
-            run_start(i, config(cfg["variant"] + "_e8"), workers)
 
 
 # ------------------------------------------------------------------ chains --
@@ -250,13 +242,6 @@ def finalize(cfg):
     targets = cfg_targets(cfg)
     rd = os.path.join(cfg["out"], "runs")
     runs = [json.load(open(os.path.join(rd, f))) for f in sorted(os.listdir(rd)) if f.endswith(".json")]
-    if cfg.get("euler_check"):            # Sec 33: an _e8 rerun replaces its start
-        rd8 = os.path.join(config(cfg["variant"] + "_e8")["out"], "runs")
-        if os.path.isdir(rd8):
-            e8 = {f[:-5]: json.load(open(os.path.join(rd8, f))) for f in os.listdir(rd8) if f.endswith(".json")}
-            for r in e8.values():
-                r["euler_e8"] = True
-            runs = [e8.get(r["name"], r) for r in runs]
     runs.sort(key=lambda r: r["oos_f"])
     best = runs[0]
     p = best["params"]
@@ -286,7 +271,7 @@ def finalize(cfg):
            "n_within_5pct_of_best": int(sum(r["oos_f"] <= tol for r in runs)),
            "dist_within_5pct": {k: dist([get(r, k) for r in runs if r["oos_f"] <= tol]) for k in keys},
            "runs": [{k: r.get(k) for k in ("name", "x0", "params", "in_sample_f", "oos_f", "f_eq",
-                                            "derived", "wall_s", "f_after_nm", "f_after_dfls", "euler_e8")}
+                                            "derived", "wall_s", "f_after_nm", "f_after_dfls")}
                     for r in runs]}
     rep.update(build_chains(p, targets, cfg, cfg["out"]))
     for c in ("chain_ours_5x15", "chain_kmv_3x11"):
