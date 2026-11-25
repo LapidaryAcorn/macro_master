@@ -5257,35 +5257,94 @@ workers. All 8 moments, not only kurt Δ1:
 - **Implication, not acted on:** the v3 estimates (6 steps per quarter,
   §26) carry an aggregation error of this order in var Δ1 and var Δ5.
 
-### 33.9 P2: Poland with exact time aggregation (set up, not run yet)
+### 33.9 P2: Poland with exact time aggregation (2026-11-24/25)
 
-- Variant `pex` in `scripts/pol_v4.py`, output to
-  `output/pol_v4_nob/pl_exact`.
-- **Model and box:**
-  - exact simulator, M = 1;
-  - parameters β_c and λ_c;
-  - β_c ≤ 20 (a technical bound only); λ, σ ≤ 2.
-- **6 starts:**
-  - 1 = KMV's MakeGuess converted (β₁_c 0.769);
-  - 2 = A1's de04 converted (β₁_c 3.07);
-  - 3–6 = Sobol points of the new box.
-- **Budget** as A1: DE 100 × 12 + NM 400 + 2 DFLS (logistic box, β up
-  to 20). Canonical = the lowest OOS f (400k).
-- Smoke-tested on a tiny budget.
-- **Expected time:** ≈ 3.3 h per start on one process (7 500 × 1.6 s).
-  On 3 lanes that is 2 waves, ≈ 7 h.
+**Setup.**
+- Variant `pex` in `scripts/pol_v4.py`, output in `output/pol_v4_nob/pl_exact`.
+- Model: exact simulator (§33.8), M = 1, parameters β_c and λ_c.
+- Box:
+  - β_c ≤ 20, a technical bound only;
+  - σ₁, σ₂ ≤ 3, raised from KMV's 2 at the user's request (commit 6408142) so the result cannot sit on KMV's box;
+  - λ ≤ 2 unchanged.
+- 6 starts planned:
+  - 1 = MakeGuess converted (β₁_c 0.769);
+  - 2 = A1 de04 converted (β₁_c 3.07);
+  - 3–6 = Sobol points.
+- Budget as A1: DE 100 × 12 + NM 400 + 2 DFLS. Canonical = lowest OOS f (400k, seed 987654).
+- Run with `scripts/run_pex.sh`: 3 lanes × 1 process, a commit and push after each start.
+
+**Run.**
+- Two hard power-offs (Kernel-Power 41):
+  - 24.11 19:13, which lost wave 1 after 1 h 54 min; restarted from scratch at 19:16;
+  - 25.11 04:47.
+- Finished and committed: de03, de02, de01, de05 (commits 28052e6, ce380a7, 78fb114, 595a6d8).
+- de04 and de06 (Sobol) were lost.
+- User's decision: they are not finished, the β bound is not moved, finalize is run on the 4 starts.
+- Wall time per start: 4.5–4.7 h (de01 7.2 h), against the 3.3 h expected.
+
+**Results** (`report.json`, `logs/pex_finalize.log`):
+
+| start | f in | f OOS | λ₁_c | β₁_c | σ₁ | hl₁ (yr) | var₁ | λ₂_c | β₂_c | σ₂ | var₂ | hl₂ (yr) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| de01 (MakeGuess) | 0.00395 | **0.00440** | 0.670 | **19.34 ⚠** | 2.78 | 0.009 | 0.132 | 0.0141 | 0.0041 | 0.978 | 0.605 | 9.54 |
+| de03 (Sobol) | 0.00232 | 0.00575 | 0.199 | 3.41 | 2.39 | 0.048 | 0.162 | 0.0129 | 0.0046 | 1.011 | 0.596 | 9.90 |
+| de02 (de04 conv.) | 0.00230 | 0.00593 | 0.200 | 3.37 | 2.38 | 0.048 | 0.163 | 0.0126 | 0.0048 | 1.029 | 0.599 | 9.97 |
+| de05 (Sobol) | 0.00234 | 0.00606 | 0.198 | 3.38 | 2.39 | 0.048 | 0.162 | 0.0129 | 0.0043 | 1.000 | 0.598 | 10.03 |
+
+- **Two basins.**
+  - de02, de03 and de05 come from very different starts (incl. a Sobol start with β₁_c 17.9) and meet at β₁_c ≈ 3.4, σ₁ ≈ 2.39.
+    - That is close to A1 converted (β₁_c 3.07), but σ₁ is above KMV's old bound of 2.
+  - de01 is a second basin: z₁ is practically white noise (half-life 3 days), with β₁_c at the technical bound.
+- **Bound flag** (< 5% from a bound): **de01 β₁_c = 19.34 ≥ 0.95 · 20.**
+  - Nothing else is flagged.
+  - The closest is σ₁ = 2.78 in de01, 7% from 3.
+  - de02/03/05 have no parameter near a bound.
+- **Canonical by the OOS rule: de01**, but its value of β₁_c is set by the technical bound.
+- **Moment fit of de01** at the OOS panel, relative error:
+
+  | var y | var Δ1 | var Δ5 | kurt Δ1 | kurt Δ5 | Δ1<10% | Δ1<20% | Δ1<50% |
+  |---|---|---|---|---|---|---|---|
+  | +0.5% | −2.5% | +0.2% | −2.2% | −0.0% | +0.9% | −5.8% | −0.7% |
+
+- **Chains** (in correct units β_c, λ_c; the analysis is deferred by the user):
+  - our 5 × 15 is built: ergodic var 0.764, of which z₂ 0.627; annual AC 0.831;
+  - KMV's 3 × 11 cannot be built at β₁_c = 19.3, because I + dt·Q has negative entries (KMV's Simulate.f90 would stop).
+    - `build_chains` now records the error in the report instead of aborting.
+
+**OOS noise check** (`scripts/nob_pex_oos_seeds.py`, `oos_seeds.json`): de01 and de03 on 5 independent 400k panels (seeds 11–15, the same for both).
+
+| start | mean f | sd | min | max |
+|---|---|---|---|---|
+| de01 | 0.00406 | 0.00024 | 0.00367 | 0.00430 |
+| de03 | 0.00602 | 0.00085 | 0.00488 | 0.00718 |
+
+- Paired difference de01 − de03: mean −0.00197, sd 0.00102, se 0.00046 (t ≈ 4.3).
+- de01 is better on all 5 panels.
+- The gap is therefore larger than the noise between panels.
+- The noise is not negligible: one panel moves de03's f by ±15%.
+- **Where the gap comes from** (mean over the 5 panels, relative error):
+  - de03 misses kurt Δ1 by −8.3% (sd 0.9%) and Δ1<10% by +3.5%.
+  - de01 misses Δ1<20% by −5.6% and var Δ1 by −2.0%.
+  - de03's in-sample f (0.0023) is far below its OOS mean (0.0060). Its basin fits the in-sample panel's kurtosis, which is a noise fit.
+  - de01's in-sample and OOS f are close (0.0040 vs 0.0041).
+
+**Working interpretation** (user, 2026-11-25).
+- With exact aggregation the transitory component is weakly identified. There is a ridge in β₁, σ₁, λ₁: a faster and larger shock gives similar annual moments.
+- var₂ and the half-life of z₂ are stable across all variants:
+  - Poland: A1 0.607 / 9.3 yr, P2 0.596–0.605 / 9.5–10.0 yr;
+  - A2, with KMV's targets: 0.631.
+- Conclusions for HANK should rest on z₂, not on the parameters of z₁.
 
 ### 33.10 Still to do
 
-- P2 (§33.9).
-- Then, by the user's decision:
-  - KMV targets;
+- No more long computations until the user has checked the hardware (two power-offs under 3 processes).
+- By the user's decision:
+  - KMV targets with exact aggregation;
   - a variant with a β cap;
-  - chains with β_c.
+  - chains with β_c (incl. what to do with 3 × 11 at a large β₁_c).
 - From the earlier plan:
-  - the budget validation (2 best starts per side with `_full`);
-  - A3: chains with β_c, and the analysis of 3 × 11 = 1.37;
-  - A4: the comparison table;
+  - the budget validation;
+  - A3/A4;
   - stage B.
 
 ---
@@ -5296,7 +5355,11 @@ workers. All 8 moments, not only kurt Δ1:
   estimate is an exact discrete model (16 points per year), not a continuous
   process: its continuous equivalent (β_c, λ_c) converges only at 128–256
   steps per quarter, with a much worse fit. Chosen: exact integration (Ei,
-  §33.8, validated); P2 (§33.9) is set up and waits for the go-ahead.
+  §33.8, validated). P2 (§33.9, 4 of 6 starts after two power-offs): two
+  basins; the OOS-best de01 has β₁_c at the technical bound 20 (z₁ ≈ white
+  noise), its OOS lead over the β₁_c ≈ 3.4 basin exceeds the panel noise;
+  z₁ weakly identified, var₂ ≈ 0.60 and hl₂ 9.5–10 yr stable. Next steps by
+  the user's decision, after the hardware check.
 - **Poland v4 (§32, 2026-11-13): open points.** (i) The second local minimum
   (β₁ ≈ 0.25, var₂ 0.50, hl₂ 20 yr) has a lower in-sample f and is
   rejected only out of sample. Supervisor: is the OOS rule acceptable as

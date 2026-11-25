@@ -275,7 +275,12 @@ def build_chains(p, targets, cfg, outdir, kmv3x11=True):
                               "diagnostics": diagnose(p, disc)}
     if kmv3x11:
         t0 = time.time()
-        disc, info = km.kmv_discretize(p, targets)
+        try:
+            disc, info = km.kmv_discretize(p, targets)
+        except ValueError as e:     # Sec 33 P2: e.g. beta1_c ~ 19 -> I + dt*Q < 0
+            rep["chain_kmv_3x11"] = {"error": str(e)}
+            print("chain_kmv_3x11 not built:", e)
+            return rep
         d = os.path.join(outdir, "chain_kmv_3x11")
         os.makedirs(d, exist_ok=True)
         export_chain(disc, d)
@@ -321,7 +326,7 @@ def finalize(cfg):
                     for r in runs]}
     rep.update(build_chains(p, targets, cfg, cfg["out"]))
     for c in ("chain_ours_5x15", "chain_kmv_3x11"):
-        if c in rep:
+        if c in rep and "ergodic_var" in rep[c]:
             print(c, "ergodic var", rep[c]["ergodic_var"], "ac annual", round(rep[c]["autocorr_annual_logy"], 3))
     save_params(p, os.path.join(cfg["out"], "params.json"))
     json.dump(rep, open(os.path.join(cfg["out"], "report.json"), "w"), indent=2, default=float)
